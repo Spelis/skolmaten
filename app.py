@@ -2,7 +2,15 @@ import asyncio
 import datetime
 import uuid
 
-from flask import Flask, jsonify, make_response, redirect, request, session, url_for
+from flask import (
+    Flask,
+    jsonify,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 import db
 
@@ -43,40 +51,45 @@ async def week(week):
         year = datetime.datetime.now().year
     monday, sunday = week_mon2sun(year, week)
     w = f"Matsedel vecka {week}, {year} ({monday.month}/{monday.day}-{sunday.month}/{(sunday.day)})"
-    weekdict = {
-        w: {
-            i.capitalize(): (await db.get_food(year, week, weekdays.index(i)))
-            for i in weekdays
-        },
-        "Länkar": [
-            f"{baseurl}login",
-            f"{baseurl}logout",
-            f"{baseurl}register",
-            f"{baseurl}week/<vecka>",
-        ],
-    }
-    userdict = {"user": "Not logged in."}  # fallback if user isnt logged in.
+    links = [
+        f"login - Logga in",
+        f"logout - Logga ut",
+        f"register - Registrera nytt konto",
+        f"week/{week} - Matsedel för vecka n",
+    ]
+    userdict = {
+        "Username": "Anonymous",
+        "PermissionLevel": 0,
+    }  # fallback if user isnt logged in.
     if request.cookies.get("token", None) is not None:
         info = await db.get_info_by_token(
             request.cookies.get("token")
         )  # get user information
         if info is None:
             return redirect("/logout")  # log out if token is invalid
-        userdict = {"Username": info[0], "PermissionLevel": db.AuthLevels(info[1]).name}
+        userdict = {
+            "Username": info[0],
+            "PermissionLevel": info[1],
+        }
         if info[1] >= 2:
             userdict["Hantera"] = await db.get_all_users(request.url_root)
-        if info[1] >= 1:
-            weekdict[w]["Hantera"] = {}  # hantera matsedel
-            weekdict[w]["Hantera"]["Mat per dag"] = {
-                i: {
-                    "Ändra": baseurl + f"mgr/food/{year}/{week}/{n+1}/set",
-                    "Radera": baseurl + f"mgr/food/{year}/{week}/{n+1}/del",
-                }
-                for n, i in enumerate(weekdays)
-            }
-    weekdict["User"] = userdict
+        links.append(f"mgr/edtpwd/{info[0]} - Change Password")
 
-    return jsonify(weekdict)
+    return render_template(
+        "week.html",
+        week=week,
+        weekday=weekdays,
+        schema=[
+            [
+                baseurl + f"mgr/food/{year}/{week}/{i+1}/",
+                await db.get_food(year, week, i),
+            ]
+            for i in range(0, 5)
+        ],
+        links=links,
+        baseurl=baseurl,
+        userdict=userdict,
+    )
 
 
 @app.route("/year/<int:year>")
@@ -253,3 +266,17 @@ async def editfoodforday(year, week, weekday):
         <input type=submit value=Ok>
     </form>
 """
+
+
+@app.route("/mgr/food/<int:year>/<int:week>/<int:weekday>/del")
+async def deletefoodforday(year, week, weekday):
+    try:
+        if await hasperms(request.cookies.get("token", None), 1):
+            await db.set_food(year, week, weekday, "")
+        return redirect(f"/week/{week}")
+    except Exception as e:
+        return {
+            f"Failed to set Food for {datetime.date.fromisocalendar(year,week,weekday)}": str(
+                e
+            )
+        }

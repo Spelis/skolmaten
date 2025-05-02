@@ -1,0 +1,43 @@
+@font-face {
+	font-family: 'JetBrains';
+	src: url('/static/jetbrains.ttf');
+}
+
+* {
+	font-family: JetBrains;
+}
+
+.parent {
+	display: flex;
+	gap: 1rem;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.contbox {
+	flex: 1 1 100px;
+	margin: 0;
+	text-align: left;
+	padding: 10px;
+	border: 2px solid white;
+	color: white;
+}
+
+h1,h2,h3,h4 {
+	margin: 0;
+}
+
+
+.weekplancontrol a {
+	text-decoration: none;
+	margin: 0 2px;
+	border: 1px solid #ffffff80;
+	display: inline-block;
+	width: 16px;
+	height: 18px;
+	padding: 1px 2px;
+	border-radius: 4px;
+}
+.weekplancontrol a:hover {
+	border-color: #0080ff80
+}
