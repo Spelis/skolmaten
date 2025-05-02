@@ -1,0 +1,3 @@
+aiosqlite
+flask[async]
+python-jose
