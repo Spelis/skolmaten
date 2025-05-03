@@ -1,0 +1,20 @@
+
+[project]
+name = "skolmaten"
+version = "0.1.0"
+description = "Food planning service for schools"
+authors = [
+  { name = "Elis Eriksson", email = "Spelis@duck.com" }
+]
+license = { text = "MIT" }
+requires-python = "==3.13.3"
+dependencies = [
+  "PyPDF2",
+  "Flask",
+  "python-jose",
+  "aiosqlite"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
