@@ -46,7 +46,7 @@ Efter att ha kört `db.py` skapas följande kontot:
 * Lösenord: `adminpassword`
 
 Använd det för att bjuda in/registrera andra användare.
-Det rekommenderas också att du ändrar lösenordet. Det kan hittas i filen `db.py` under funktionen `create_schema()`.
+Det rekommenderas också att du ändrar lösenordet. Det kan du göra genom att logga in och ändra lösenordet från högersta panelen i veckoplanen.
 
 ## 🔒 Behörigheter
 

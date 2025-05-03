@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <title>{% block title %}{% endblock %} - Skolmaten</title>
 <link href="{{ url_for('static', filename='style.css' )}}" rel="stylesheet">
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
 <nav>
-	<h1>Skolmaten</h1>
+	<h1><a href="/">󰉚 Skolmaten</a></h1>
 </nav>
 <center class="parent">
 	{% block content %}

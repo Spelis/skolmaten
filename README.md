@@ -49,7 +49,7 @@ After running `db.py`, the following account is created:
 * Password: `adminpassword`
 
 Use it to invite/register other users.
-It is also recommended you change the password. It can be found in the `db.py` file in the `create_schema()` function.
+It is also recommended you change the password. It can be changed by logging in and changing the password from the rightmost panel in the week view.
 
 ## 🔒 Permissions
 

@@ -131,6 +131,30 @@ async def get_all_users(baseurl: str):
             return r
 
 
+async def get_self(baseurl: str, name: str):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+            "SELECT pass,name,authlvl FROM users WHERE name = ?", (name,)
+        ) as cursor:
+            rows = await cursor.fetchall()
+            r = {}
+            for row in rows:
+                r[row[1]] = {
+                    "name": row[1],
+                    "pass": row[0],
+                    "auth": {row[2]: AuthLevels(row[2]).name},
+                    "revoke_token": baseurl + f"mgr/tokrev/{row[1]}",
+                    "delete_account": baseurl + f"mgr/accdel/{row[1]}",
+                    "change_password": baseurl + f"mgr/edtpwd/{row[1]}",
+                    "change_permission": {
+                        AuthLevels(i).name: baseurl + f"mgr/edtprm/{row[1]}/{i}"
+                        for i in range(4)
+                    },
+                }
+
+            return r
+
+
 async def get_info_by_name(name):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
@@ -181,14 +205,38 @@ async def get_food(year, week, day):
             return val[0] if val else ""
 
 
+async def get_food_year(year):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+            "SELECT week, mon, tue, wed, thu, fri FROM weeks WHERE year = ?", (year,)
+        ) as cursor:
+            existing = {row[0]: row[1:] for row in await cursor.fetchall()}
+
+    total_weeks = datetime.date(year, 12, 28).isocalendar()[1]
+    result = []
+    for week in range(1, total_weeks + 1):
+        date = datetime.datetime.fromisocalendar(year, week, 1)
+        days = list(existing.get(week, [""] * 5))
+        result.append(
+            {
+                "date": date,
+                "week": week,
+                "days": [{"text": days[i], "day": i + 1} for i in range(5)],
+            }
+        )
+    return result
+
+
 async def delete_account(name):
     async with aiosqlite.connect("database.db") as db:
         await db.execute("DELETE FROM users WHERE name = ?", (name,))
+        await db.commit()
 
 
 async def edit_permission(name, perm):
     async with aiosqlite.connect("database.db") as db:
         await db.execute("UPDATE users SET authlvl = ? WHERE name = ?", (perm, name))
+        await db.commit()
 
 
 async def change_password(name, old, new):

@@ -1,3 +1,6 @@
 database.db
 __pycache__
 .vscode
+output.json
+pdfs/
+pdfs/*

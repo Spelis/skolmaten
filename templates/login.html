@@ -1,0 +1,11 @@
+{% extends 'modal.html' %}
+{% block title %}Login{% endblock %}
+
+{% block modal_body %}
+<h2>Logga in</h2>
+<form method="post">
+	<input type="text" name="username" placeholder="Användarnamn" required><br>
+	<input type="password" name="password" placeholder="Lösenord" required><br>
+  <input type="submit" value="Login">
+</form>
+{% endblock %}

@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import uuid
 
 from flask import (
@@ -20,12 +21,15 @@ app.secret_key = uuid.uuid4().hex
 app.json.sort_keys = False
 
 weekdays = ["mån", "tis", "ons", "tor", "fre"]
+weekdays_en = ["mon", "tue", "wed", "thu", "fri"]
 
 
 def week_mon2sun(year, week):
-    return datetime.datetime.fromisocalendar(
-        year, week, 1
-    ), datetime.datetime.fromisocalendar(year, week, 5)
+    r = [
+        datetime.datetime.fromisocalendar(year, week, 1),
+        datetime.datetime.fromisocalendar(year, week, 5),
+    ]
+    return r
 
 
 @app.route("/")
@@ -49,13 +53,16 @@ async def week(week):
     year = request.args.get("year", type=int)
     if year is None:
         year = datetime.datetime.now().year
-    monday, sunday = week_mon2sun(year, week)
+    m2s = week_mon2sun(year, week)
+    monday = m2s[0]
+    sunday = m2s[1]
     w = f"Matsedel vecka {week}, {year} ({monday.month}/{monday.day}-{sunday.month}/{(sunday.day)})"
     links = [
         f"login - Logga in",
         f"logout - Logga ut",
         f"register - Registrera nytt konto",
-        f"week/{week} - Matsedel för vecka n",
+        f"week/{week} - Matsedel för vecka {week}",
+        f"year/{year} - Matsedel för år {year}",
     ]
     userdict = {
         "Username": "Anonymous",
@@ -73,11 +80,19 @@ async def week(week):
         }
         if info[1] >= 2:
             userdict["Hantera"] = await db.get_all_users(request.url_root)
-        links.append(f"mgr/edtpwd/{info[0]} - Change Password")
+        else:
+            userdict["Hantera"] = await db.get_self(
+                request.url_root, userdict["Username"]
+            )
+        links.append(f"mgr/edtpwd/{info[0]} - Ändra lösenord")
+        if userdict["PermissionLevel"] >= 1:
+            links.append(f"mgr/food/import - Importera matsedel från JSON")
 
     return render_template(
         "week.html",
+        weekdata=monday,
         week=week,
+        year=year,
         weekday=weekdays,
         schema=[
             [
@@ -89,12 +104,59 @@ async def week(week):
         links=links,
         baseurl=baseurl,
         userdict=userdict,
+        str=str,
+        configdict=userdict.get("Hantera", {}),
+        list=list,
+        datetime=datetime.datetime,
     )
 
 
 @app.route("/year/<int:year>")
-async def year(year):
-    pass
+async def yearplan(year):
+    baseurl = request.url_root
+    week = datetime.date.today().isocalendar().week
+    userdict = {"Username": "Anonymous", "PermissionLevel": 0}
+    token = request.cookies.get("token")
+
+    if token:
+        info = await db.get_info_by_token(token)
+        if not info:
+            return redirect("/logout")
+
+        username, permission = info
+        userdict = {"Username": username, "PermissionLevel": permission}
+
+        if permission >= 2:
+            userdict["Hantera"] = await db.get_all_users(baseurl)
+        else:
+            userdict["Hantera"] = await db.get_self(baseurl, username)
+
+    links = [
+        "login - Logga in",
+        "logout - Logga ut",
+        "register - Registrera nytt konto",
+        f"week/{week} - Matsedel för vecka {week}",
+        f"year/{year} - Matsedel för år {year}",
+    ]
+
+    if userdict["Username"] != "Anonymous":
+        links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")
+    if userdict["PermissionLevel"] >= 1:
+        links.append(f"mgr/food/import - Importera matsedel från JSON")
+
+    return render_template(
+        "year.html",
+        year=year,
+        weekday=weekdays,
+        schema=await db.get_food_year(year),
+        links=links,
+        baseurl=baseurl,
+        userdict=userdict,
+        configdict=userdict.get("Hantera", {}),
+        str=str,
+        list=list,
+        datetime=datetime.datetime,
+    )
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -109,13 +171,7 @@ async def login():
             return resp
         except Exception as e:
             return {"Failed to Log In": str(e)}
-    return """
-        <form method="post">
-            <input type=text name=username placeholder=Användarnamn>
-            <input type=password name=password placeholder=Lösenord>
-            <input type=submit value=Login>
-        </form>
-    """  # return html form
+    return render_template("login.html")
 
 
 @app.route("/logout")
@@ -154,26 +210,7 @@ async def register():
             return resp
         except Exception as e:
             return {"Failed to Log In": str(e)}
-    return """
-        <form method="post">
-            <h1>Inloggning</h1>
-            <input type=text name=username placeholder="Användarnamn">
-            <input type=password name=password placeholder="Lösenord">
-            <br>
-            <h1>Inbjudan</h1>
-            <input type=text name=invitename placeholder="Användarnamn">
-            <input type=password name=invitepass placeholder="Lösenord">
-            <label>Ny: </label>
-            <select id="authlvl" name='authlvl'>
-                <option value=0>User</option>
-                <option value=1>FoodEditor</option>
-                <option value=2>Moderator</option>
-                <option value=3>Admin</option>
-            </select>
-            <br><br>
-            <input type=submit value=Registrera>
-        </form>
-    """  # return html form
+    return render_template("register.html")
 
 
 @app.route("/mgr/tokrev/<user>")
@@ -181,7 +218,8 @@ async def revoke_token(user):
     token = request.cookies.get("token", None)
     if token is None:
         return {"Status": "Failed.", "Reason": "Not logged in."}
-    if await hasperms(token, 2):
+    info = await db.get_info_by_token(token)
+    if await hasperms(token, 2) or info[0] == user:
         tinfo = await db.get_info_by_name(user)
         minfo = await db.get_info_by_token(token)
         if minfo is None:
@@ -191,7 +229,7 @@ async def revoke_token(user):
                 "Failed to revoke token": f"Target ({user}) is too authorized for you."
             }
         await db.tokenrevoke(tinfo[1])
-        return {"Status": "Success!"}
+        return redirect("/")
     return {"Status": "Failed.", "Reason": "Invalid Permission"}
 
 
@@ -203,7 +241,7 @@ async def delete_account(user):
     info = await db.get_info_by_token(token)
     if await hasperms(token, 2) or info[0] == user:
         await db.delete_account(user)
-        return {"Status": "Success!"}
+        return redirect("/")
     return {"Status": "Failed.", "Reason": "Unauthorized."}
 
 
@@ -237,14 +275,7 @@ async def edit_password(user):
             return redirect("/")
         except Exception as e:
             return {"Status": "Failed.", "Reason": str(e)}
-    return f"""
-    <form method="post">
-    <h1>Ändra lösenord för '{user}'</h1>
-    <input type=password name=oldpassword placeholder="Gammalt Lösenord">
-    <input type=password name=newpassword placeholder="Nytt Lösenord" autocomplete="new-password">
-    <input type=submit value=Ok>
-    </form>
-"""
+    return render_template("changepassword.html")
 
 
 @app.route("/mgr/food/<int:year>/<int:week>/<int:weekday>/set", methods=["GET", "POST"])
@@ -280,3 +311,26 @@ async def deletefoodforday(year, week, weekday):
                 e
             )
         }
+
+
+@app.route("/mgr/food/import", methods=["GET", "POST"])
+async def importfoodjson():
+    if request.method == "POST":
+        try:
+            token = request.cookies.get("token", None)
+            if token is None:
+                raise Exception("Invalid Permissions")
+            file = request.files["json"]
+            if file:
+                j = json.load(file)
+                for year, weeks in j.items():
+                    for week, days in weeks.items():
+                        for day, value in days.items():
+                            print(day[0:3].lower(), weekdays_en.index(day[0:3].lower()))
+                            weekday = int(weekdays_en.index(day[0:3].lower())) + 1
+                            await db.set_food(year, week, weekday, value)
+                        print(year, week, days)
+            return redirect("/")
+        except Exception as e:
+            return {"Failed to import food": str(e)}
+    return render_template("import.html")
