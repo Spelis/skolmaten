@@ -16,9 +16,9 @@ function togglePassword(el) {
 
 <div class="contbox">
   <div style="display: flex; align-items: center; justify-content: space-between;">
-    <a href="{{ baseurl+'year/'+str(year-1) }}" class="weeknavb"></a>
+    <a href="{{ baseurl+'week/'+str(week-1) }}" class="weeknavb"></a>
     <h2 style="margin-top:1em;">󰃭 {% block title %}Vecka {{ week }}{% endblock %}:<span style="color: #9399b2;font-size:0.8rem;">({{ year }})</span></h2>
-    <a href="{{ baseurl+'year/'+str(year+1) }}" class="weeknavb"></a>
+    <a href="{{ baseurl+'week/'+str(week+1) }}" class="weeknavb"></a>
   </div>
   <hr>
   {% for i in range(5) %}
