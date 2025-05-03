@@ -1,24 +1,12 @@
-import asyncio
 import datetime
 import json
-import uuid
 
-from flask import (
-    Flask,
-    jsonify,
-    make_response,
-    redirect,
-    render_template,
-    request,
-    url_for,
-)
+from flask import Blueprint, make_response, redirect, render_template, request
 
-import db
+from . import db
 
-app = Flask(__name__)
+app = Blueprint("main", __name__)
 
-app.secret_key = uuid.uuid4().hex
-app.json.sort_keys = False
 
 weekdays = ["mån", "tis", "ons", "tor", "fre"]
 weekdays_en = ["mon", "tue", "wed", "thu", "fri"]

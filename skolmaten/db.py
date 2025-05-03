@@ -252,5 +252,5 @@ async def change_password(name, old, new):
         await db.commit()
 
 
-if __name__ == "__main__":
+def init_app():
     asyncio.run(create_schema())
