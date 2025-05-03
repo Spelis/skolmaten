@@ -33,11 +33,17 @@ cd matsedel
 pip install -r requirements.txt
 ```
 
-### 3. Run the app
+### 3-1. Run the app 
 
 ```
-python db.py # initialize the database
-flask run # run the web app
+gunicorn -w 4 -b 0.0.0.0:8000 'skolmaten:create_app()'
+```
+
+### 3-2. Run the app through Docker
+
+```
+docker build -t skolmaten .
+docker run -d -p 8000:8000 skolmaten
 ```
 
 ## 🧪 Default Admin Account

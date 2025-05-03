@@ -1,6 +1,8 @@
+# for app itself
 aiosqlite
 flask[async]
 python-jose
 # for pdf2json
 PyPDF2
-
+# for deployment
+gunicorn
