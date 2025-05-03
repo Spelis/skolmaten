@@ -228,18 +228,23 @@ async def get_food_year(year):
 
 
 async def delete_account(name):
+    if name == "adminacc":
+        raise Exception("The Admin Account is protected!")
     async with aiosqlite.connect("database.db") as db:
         await db.execute("DELETE FROM users WHERE name = ?", (name,))
         await db.commit()
 
 
 async def edit_permission(name, perm):
+    if name == "adminacc":
+        raise Exception("The Admin Account is protected!")
     async with aiosqlite.connect("database.db") as db:
         await db.execute("UPDATE users SET authlvl = ? WHERE name = ?", (perm, name))
         await db.commit()
 
 
 async def change_password(name, old, new):
+    # the admin account is not protected against password changing.
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
             "SELECT pass FROM users WHERE name = ?", (name,)

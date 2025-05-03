@@ -18,25 +18,21 @@
 }
 
 .contbox {
-	flex: 1 1 300px;
-	margin: 1em;
-	text-align: left;
-	padding: 2em 2em;
-	border: 2px solid #585b70;
-	color: #cdd6f4;
-	background: #1e1e2e;
-	box-sizing: border-box;
-	border-radius: 8px;
-	max-height: 500px;
-	overflow: scroll;
+  flex: 1 1 300px;
+  min-width: 300px;
+  margin: 1em;
+  text-align: left;
+  padding: 2em;
+  border: 2px solid #585b70;
+  color: #cdd6f4;
+  background: #1e1e2e;
+  box-sizing: border-box;
+  border-radius: 8px;
+  max-height: 500px;
+  overflow-y: auto;
 }
 
-@media (max-width: 1050px) {
-  .contbox {
-    flex: 1 1 100%;
-    padding: 1em;
-  }
-}
+
 
 h1,h2,h3,h4 {
 	margin: 0;
@@ -159,4 +155,35 @@ body {
 
 hr {
 	color: #cdd6f440
+}
+
+@media (max-width: 1050px) {
+  .contbox {
+    flex: 1 1 100%;
+    width: 100%;
+    padding: 1em;
+    margin: 0.5em 0;
+    max-height: 800px;
+  }
+
+  .parent {
+    flex-direction: column;
+    gap: 0.5em;
+    margin: 10px;
+  }
+
+  h2,h1 {
+	  font-size: 48px;
+  }
+  h3 {
+	  font-size: calc(18.72px*2);
+  }
+  p,a, input, details {
+	  font-size: 32px;
+  }
+  .weekplancontrol a, .weeknavb {
+	  width: 32px;
+	  height: 36px;
+  }
+
 }
