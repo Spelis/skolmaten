@@ -24,6 +24,11 @@ def week_mon2sun(year, week):
     return r
 
 
+def is_week_in_next_year(year, week_num):
+    max_weeks = datetime.date(year, 12, 28).isocalendar()[1]
+    return week_num > max_weeks
+
+
 @app.route("/")
 def root():
     week = datetime.datetime.now().isocalendar()[1]
@@ -45,6 +50,12 @@ async def week(week):
     year = request.args.get("year", type=int)
     if year is None:
         year = datetime.datetime.now().year
+    if is_week_in_next_year(year, week):
+        return redirect(f"/week/1?year={year+1}")
+    if week <= 0:
+        return redirect(
+            f"/week/{datetime.date(year, 12, 28).isocalendar()[1]}?year={year-1}"
+        )
     m2s = week_mon2sun(year, week)
     monday = m2s[0]
     sunday = m2s[1]
@@ -306,20 +317,29 @@ async def deletefoodforday(year, week, weekday):
 async def importfoodjson():
     if request.method == "POST":
         try:
-            token = request.cookies.get("token", None)
-            if token is None:
-                raise Exception("Invalid Permissions")
-            file = request.files["json"]
-            if file:
-                j = json.load(file)
-                for year, weeks in j.items():
-                    for week, days in weeks.items():
-                        for day, value in days.items():
-                            print(day[0:3].lower(), weekdays_en.index(day[0:3].lower()))
-                            weekday = int(weekdays_en.index(day[0:3].lower())) + 1
-                            await db.set_food(year, week, weekday, value)
-                        print(year, week, days)
+            token = request.cookies.get("token")
+            if not token:
+                return {"error": "Invalid Permissions"}, 403
+
+            file = request.files.get("json")
+            if not file:
+                return {"error": "No file uploaded"}, 400
+
+            j = json.load(file.stream)
+            for year, weeks in j.items():
+                for week, days in weeks.items():
+                    for day, value in days.items():
+                        day_short = day[
+                            :3
+                        ].lower()  # truncate to 3 letters, just in case so the app doesnt shit itself
+                        if day_short not in weekdays_en:
+                            continue
+                        weekday = weekdays_en.index(day_short) + 1
+                        await db.set_food(year, week, weekday, value)
+
             return redirect("/")
+
         except Exception as e:
-            return {"Failed to import food": str(e)}
+            return {"error": f"Failed to import food: {str(e)}"}, 500
+
     return render_template("import.html")

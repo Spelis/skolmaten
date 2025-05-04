@@ -170,14 +170,12 @@ async def tokenrevoke(token):
 
 
 async def set_food(year, week, day, value):
-    col = weekdays[day - 1] if 0 <= day - 1 < len(weekdays) else None
-    if not col:
-        raise ValueError(
-            "Invalid day index"
-        )  # check so we dont provide weekday 15 (doesn't exist)
+    if not (1 <= day <= 7):
+        raise ValueError("Invalid weekday index")
+
+    col = weekdays[day - 1]
 
     async with aiosqlite.connect("database.db") as db:
-        # try update
         cursor = await db.execute(
             f"UPDATE weeks SET {col} = ? WHERE week = ? AND year = ?",
             (value, week, year),
@@ -185,11 +183,10 @@ async def set_food(year, week, day, value):
         await db.commit()
 
         if cursor.rowcount == 0:
-            # insert empty row with value in right column
             values = [""] * len(weekdays)
-            values[day] = value
+            values[day - 1] = value
             await db.execute(
-                f"INSERT INTO weeks (year, week, {','.join(weekdays)}) VALUES (?, ?, {','.join(['?']*len(weekdays))})",
+                f"INSERT INTO weeks (year, week, {','.join(weekdays)}) VALUES (?, ?, {','.join(['?'] * len(weekdays))})",
                 (year, week, *values),
             )
             await db.commit()

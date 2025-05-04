@@ -2,10 +2,26 @@
 <title>{% block title %}{% endblock %} - Skolmaten</title>
 <link href="{{ url_for('static', filename='style.css' )}}" rel="stylesheet">
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
+<script>
+  const applyTheme = () => {
+    const theme = localStorage.getItem("theme") || "dark"
+    document.body.classList.toggle("light", theme === "light")
+  }
+
+  const toggleTheme = () => {
+    const isLight = document.body.classList.toggle("light")
+    localStorage.setItem("theme", isLight ? "light" : "dark")
+  }
+
+  window.addEventListener("DOMContentLoaded", applyTheme)
+</script>
 <nav>
-	<h1><a href="/">󰉚 Skolmaten</a></h1>
+	<h1 style="display:inline-block"><a href="/">󰉚 Skolmaten</a></h1><a href="javascript:void(0);" onclick="toggleTheme()" style="float: right; text-decoration:none;">🌓</button>
 </nav>
 <center class="parent">
 	{% block content %}
 	{% endblock %}
 </center>
+<footer>
+	Made with 󰋑 by <a href="https://spelis.github.io/">Spelis</a>
+</footer>

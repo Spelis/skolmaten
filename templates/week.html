@@ -3,22 +3,22 @@
 {% block content %}
 <script>
 function togglePassword(el) {
-  const input = el.closest('li').querySelector('input.userpassword');
-  if (input.type === 'password') {
-    input.type = 'text';
+  const input = el.closest('li').querySelector('span.userpassword');
+  if (input.classList.contains('hidepass')) {
     el.textContent = '󰈈 '; // open eye
+    input.classList.remove('hidepass');
   } else {
-    input.type = 'password';
     el.textContent = '󰈉 '; // closed eye
+    input.classList.toggle('hidepass');
   }
 }
 </script>
 
 <div class="contbox">
   <div style="display: flex; align-items: center; justify-content: space-between;">
-    <a href="{{ baseurl+'week/'+str(week-1) }}" class="weeknavb"></a>
+    <a href="{{ baseurl+'week/'+str(week-1)+'?year='+str(year) }}" class="weeknavb"></a>
     <h2 style="margin-top:1em;">󰃭 {% block title %}Vecka {{ week }}{% endblock %}:<span style="color: #9399b2;font-size:0.8rem;">({{ year }})</span></h2>
-    <a href="{{ baseurl+'week/'+str(week+1) }}" class="weeknavb"></a>
+    <a href="{{ baseurl+'week/'+str(week+1)+'?year='+str(year) }}" class="weeknavb"></a>
   </div>
   <hr>
   {% for i in range(5) %}
@@ -44,11 +44,11 @@ function togglePassword(el) {
 <div class="contbox">
   <h2> Inställningar och hantering</h2>
   {% for username in configdict.keys() %}
-    <hr style='color: #cdd6f440'>
-    <details style='margin-bottom: 5px;'>
+    <hr>
+    <details style='margin-bottom: 5px'>
       <summary>
         {% if username == userdict['Username'] %}
-        <span title="You are logged in as {{ username }}"></span>
+        <span title="Du är inloggad som {{ username }}"> </span>
         {% endif %}
         {{ username }}
         <span class="weekplancontrol" style='float:right;'>
@@ -57,16 +57,18 @@ function togglePassword(el) {
         </span>
       </summary>
       <ul style="margin:0;margin-top:5px;">
-        <li style="margin-bottom: 5px;">
+        <li style="margin-bottom: 5px;" class="truncatecont">
           <strong>Password:</strong>
-          <input type=password value="{{ configdict[username]['pass'] }}" disabled=true class="userpassword">
+	  <span class="userpassword hidepass truncate">{{ configdict[username]['pass'] }}</span>
           <span class="weekplancontrol" style='float:right;'>
             <a href="{{ configdict[username]['change_password'] }}"> </a>
             <a href="javascript:void(0);" onclick="togglePassword(this)">󰈉 </a>
           </span>
         </li>
-        <li><strong>Permissions:</strong>
+        <li class="truncatecont"><strong>Permissions:</strong>
+		<span class="truncate">
           {{ list(configdict[username]['auth'].values())[0] }}
+		</span>
           {% if userdict['PermissionLevel'] >= 2 %}
           <span class="weekplancontrol" style='float:right;'>
             <a href="{{ configdict[username]['change_permission']['User'] }}"> </a>

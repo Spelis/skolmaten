@@ -9,11 +9,11 @@ week_re = re.compile(r"V\.\s*(\d+)")
 day_re = re.compile(r"^(Mån|Tis|Ons|Tor|Fre)\s+(\d+/\d+)\s+(.*)")
 
 days_map = {
-    "Mån": "Monday",
-    "Tis": "Tuesday",
-    "Ons": "Wednesday",
-    "Tor": "Thursday",
-    "Fre": "Friday",
+    "Mån": "mon",
+    "Tis": "tue",
+    "Ons": "wed",
+    "Tor": "thu",
+    "Fre": "fri",
 }
 
 
