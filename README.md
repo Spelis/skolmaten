@@ -46,16 +46,27 @@ docker build -t skolmaten .
 docker run -d -p 8000:8000 skolmaten
 ```
 
+### 3-3. Run the app in developer mode
+
+```
+flask --app skolmaten run --debug
+```
+
+### 4. Open in your browser
+
+Open `localhost:8000` if you started with gunicorn or Docker. Otherwise you open `localhost:5000`
+
+
 ## 🧪 Default Admin Account
 
-After running `db.py`, the following account is created:
+After running the program, the following account is created:
 
 * Username: `adminacc`
 
 * Password: `adminpassword`
 
 Use it to invite/register other users.
-It is also recommended you change the password. It can be changed by logging in and changing the password from the rightmost panel in the week view.
+It is also recommended you change the password. It can be changed by logging in and changing the password from the rightmost or center panel in the week view.
 
 ## 🔒 Permissions
 

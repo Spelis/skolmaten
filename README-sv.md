@@ -9,7 +9,7 @@ En minimal asynkron webbapp för hantering av veckovisa matmenyer (skolmaten) me
 - 🔐 JWT-baserat inloggningssystem med roller
 - 🗓️ Veckobaserad matplanering
 - 🧑‍💼 Rollbaserad administrationspanel
-- 🌐 Asynkron med enkla HTML-formulär
+- 🌐 Async-först med enkla HTML-formulär
 - 🍞 Inbyggd SQLite-databas
 
 ---
@@ -30,12 +30,28 @@ cd matsedel
 pip install -r requirements.txt
 ```
 
-### 3. Kör appen
+### 3-1. Kör appen
 
 ```
-python db.py # initialisera databasen
-flask run # kör webbappen
+gunicorn -w 4 -b 0.0.0.0:8000 'skolmaten:create_app()'
 ```
+
+### 3-2. Kör appen via Docker
+
+```
+docker build -t skolmaten .
+docker run -d -p 8000:8000 skolmaten
+```
+
+### 3-3. Kör appen i utvecklingsläge
+
+```
+flask --app skolmaten run --debug
+```
+
+### 4. Öppna i webbläsare
+
+Öppna `localhost:8000` om du startade med gunicorn eller Docker. Annars öppnar du `localhost:5000`
 
 ## 🧪 Standard administratörskonto
 
