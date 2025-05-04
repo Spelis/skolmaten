@@ -1,0 +1,9 @@
+{% extends 'modal.html' %} {% block title %}Login{% endblock %} {% block
+modal_body %}
+<h2>Ändra Matsedel {{ day }}</h2>
+
+<form method="post">
+  <input type="text" name="value" placeholder="Maträtt" />
+  <input type="submit" value="Ok" />
+</form>
+{% endblock %}

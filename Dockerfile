@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 
+ENV TZ=Europe/Stockholm
 # Create non-root user early and set permissions properly
 RUN adduser --disabled-password --gecos "" pyuser
 

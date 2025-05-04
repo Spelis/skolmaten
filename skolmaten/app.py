@@ -1,5 +1,7 @@
 import datetime
 import json
+import os
+import time
 
 from flask import Blueprint, make_response, redirect, render_template, request
 
@@ -7,6 +9,8 @@ from . import db
 
 app = Blueprint("main", __name__)
 
+os.environ["TZ"] = "Europe/London"
+time.tzset()
 
 weekdays = ["mån", "tis", "ons", "tor", "fre"]
 weekdays_en = ["mon", "tue", "wed", "thu", "fri"]
@@ -279,12 +283,9 @@ async def editfoodforday(year, week, weekday):
                     e
                 )
             }
-    return f"""
-    <form method="post">
-        <input type=text name=value placeholder="Mat {datetime.date.fromisocalendar(year,week,weekday)}">
-        <input type=submit value=Ok>
-    </form>
-"""
+    return render_template(
+        "editfood.html", day=datetime.date.fromisocalendar(year, week, weekday)
+    )
 
 
 @app.route("/mgr/food/<int:year>/<int:week>/<int:weekday>/del")

@@ -22,7 +22,7 @@ function togglePassword(el) {
   </div>
   <hr>
   {% for i in range(5) %}
-  <p class="truncatecont">{{ weekday[i - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.timestamp() + (i-1)*86400).strftime('%d %b') }}: <span class="truncate" title="{{ schema[i][1] }}">{{ schema[i][1] }}</span>
+  <p class="truncatecont">{{ weekday[i].capitalize() }} {{ datetime.fromtimestamp(weekdata.timestamp() + (i-1)*86400).strftime('%d %b') }}: <span class="truncate" title="{{ schema[i][1] }}">{{ schema[i][1] }}</span>
       {% if userdict['PermissionLevel'] >= 2 %}
       <span class="weekplancontrol" style='float:right;'>
         <a href="{{ schema[i][0]+'set' }}"> </a>
