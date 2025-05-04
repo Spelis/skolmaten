@@ -48,21 +48,19 @@ async def hasperms(token, perms):
 async def week(week):
     baseurl = request.url_root
     year = request.args.get("year", type=int)
+    token = request.cookies.get("token")
     if year is None:
         year = datetime.datetime.now().year
     if is_week_in_next_year(year, week):
         return redirect(f"/week/1?year={year+1}")
     if week <= 0:
         return redirect(
-            f"/week/{datetime.date(year, 12, 28).isocalendar()[1]}?year={year-1}"
+            f"/week/{datetime.date(year-1, 12, 28).isocalendar()[1]}?year={year-1}"
         )
     m2s = week_mon2sun(year, week)
     monday = m2s[0]
-    sunday = m2s[1]
-    w = f"Matsedel vecka {week}, {year} ({monday.month}/{monday.day}-{sunday.month}/{(sunday.day)})"
     links = [
         f"login - Logga in",
-        f"logout - Logga ut",
         f"register - Registrera nytt konto",
         f"week/{week} - Matsedel för vecka {week}",
         f"year/{year} - Matsedel för år {year}",
@@ -71,25 +69,27 @@ async def week(week):
         "Username": "Anonymous",
         "PermissionLevel": 0,
     }  # fallback if user isnt logged in.
-    if request.cookies.get("token", None) is not None:
-        info = await db.get_info_by_token(
-            request.cookies.get("token")
-        )  # get user information
-        if info is None:
-            return redirect("/logout")  # log out if token is invalid
-        userdict = {
-            "Username": info[0],
-            "PermissionLevel": info[1],
-        }
-        if info[1] >= 2:
-            userdict["Hantera"] = await db.get_all_users(request.url_root)
+    if token:
+        info = await db.get_info_by_token(token)
+        if not info:
+            return redirect("/logout")
+
+        username, permission = info
+        userdict = {"Username": username, "PermissionLevel": permission}
+
+        if permission >= 2:
+            userdict["Hantera"] = await db.get_all_users(baseurl)
         else:
-            userdict["Hantera"] = await db.get_self(
-                request.url_root, userdict["Username"]
-            )
-        links.append(f"mgr/edtpwd/{info[0]} - Ändra lösenord")
-        if userdict["PermissionLevel"] >= 1:
-            links.append(f"mgr/food/import - Importera matsedel från JSON")
+            userdict["Hantera"] = await db.get_self(baseurl, username)
+        links.insert(
+            1,
+            "logout - Logga ut",
+        )
+
+    if userdict["Username"] != "Anonymous":
+        links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")
+    if userdict["PermissionLevel"] >= 1:
+        links.append(f"mgr/food/import - Importera matsedel från JSON")
 
     return render_template(
         "week.html",
@@ -121,6 +121,12 @@ async def yearplan(year):
     userdict = {"Username": "Anonymous", "PermissionLevel": 0}
     token = request.cookies.get("token")
 
+    links = [
+        "login - Logga in",
+        "register - Registrera nytt konto",
+        f"week/{week} - Matsedel för vecka {week}",
+        f"year/{year} - Matsedel för år {year}",
+    ]
     if token:
         info = await db.get_info_by_token(token)
         if not info:
@@ -133,14 +139,10 @@ async def yearplan(year):
             userdict["Hantera"] = await db.get_all_users(baseurl)
         else:
             userdict["Hantera"] = await db.get_self(baseurl, username)
-
-    links = [
-        "login - Logga in",
-        "logout - Logga ut",
-        "register - Registrera nytt konto",
-        f"week/{week} - Matsedel för vecka {week}",
-        f"year/{year} - Matsedel för år {year}",
-    ]
+        links.insert(
+            1,
+            "logout - Logga ut",
+        )
 
     if userdict["Username"] != "Anonymous":
         links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")

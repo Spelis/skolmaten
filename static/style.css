@@ -48,6 +48,7 @@ body.light {
 
 body {
 	margin: 0;
+	margin-bottom: 40px;
 	background: var(--bg-darkest);
 }
 
@@ -113,6 +114,7 @@ nav {
 	padding: 10px;
 	z-index: 100000;
 	position: relative;
+	border-bottom: 2px solid var(--border);
 }
 
 nav > h1 > a {
@@ -184,7 +186,8 @@ footer {
 	color: var(--text);
 	text-align: center;
 	padding: 0.5rem;
-	font-size: 0.9rem;
+	font-size: 0.9rem !important;
+	border-top: 2px solid var(--border);
 }
 
 .truncatecont {
@@ -238,6 +241,9 @@ hr {
 	}
 	p, a, input, details {
 		font-size: 32px;
+	}
+	footer a {
+		font-size: 0.9rem;
 	}
 	.weekplancontrol a, .weeknavb {
 		width: 32px;
