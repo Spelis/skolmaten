@@ -8,7 +8,7 @@ from flask import Blueprint, make_response, redirect, render_template, request, 
 from . import db
 
 config = load_dotenv()
-app = Blueprint("main", __name__, static_url_path=os.environ.get["ROOT","/"]+"static")
+app = Blueprint("main", __name__, static_url_path=os.environ.get("ROOT","/")+"static")
 
 os.environ["TZ"] = "Europe/London"
 time.tzset()
