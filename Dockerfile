@@ -6,7 +6,7 @@ RUN adduser --disabled-password --gecos "" pyuser
 
 # Set working directory and permissions
 WORKDIR /app
-COPY pyproject.toml requirements.txt .env ./
+COPY pyproject.toml requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app code after installing deps
