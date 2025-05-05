@@ -213,22 +213,11 @@ async def logout():
 async def register():
     if request.method == "POST":
         try:
-            managertoken = await db.signin(
-                request.form["invitename"], request.form["invitepass"]
+            await db.register(
+                request.form["username"],
+                request.form["password"],
+                0,
             )
-            managerpermission = (await db.get_info_by_token(managertoken))[1]
-            if managerpermission >= int(db.AuthLevels.Moderator.value):
-                if int(request.form["authlvl"]) >= managerpermission:
-                    raise Exception(
-                        "Can't create user with higher permission than inviter!"
-                    )
-                await db.register(
-                    request.form["username"],
-                    request.form["password"],
-                    int(request.form["authlvl"]),
-                )
-            else:
-                raise Exception("Invalid permissions for inviter.")
 
             resp = make_response(redirect(url_for("main.root")))
             resp.set_cookie(
