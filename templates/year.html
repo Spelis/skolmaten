@@ -14,10 +14,11 @@ function togglePassword(el) {
 }
 </script>
 
+
 <div class="contbox" style="position:relative;">
   <div style="display: flex; align-items: center; justify-content: space-between">
     <a href="{{ baseurl+'year/'+str(year-1) }}" class="weeknavb"></a>
-    <h2 style="margin-top:1em; display:inline-block">󰃭 {% block title %}År {{ year }}{% endblock %}:</h2>
+    <h2 style="margin-top:1em;">󰃭 {% block title %}År {{ year }}{% endblock %}:</h2>
     <a href="{{ baseurl+'year/'+str(year+1) }}" class="weeknavb"></a>
   </div>
   <hr>

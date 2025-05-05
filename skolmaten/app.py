@@ -3,7 +3,7 @@ import json
 import os
 import time
 
-from flask import Blueprint, make_response, redirect, render_template, request
+from flask import Blueprint, make_response, redirect, render_template, request, url_for
 
 from . import db
 
@@ -32,7 +32,7 @@ def is_week_in_next_year(year, week_num):
 @app.route("/")
 def root():
     week = datetime.datetime.now().isocalendar()[1]
-    return redirect(f"/week/{week}")
+    return redirect(url_for("main.week", week=week))
 
 
 async def hasperms(token, perms):
@@ -46,23 +46,28 @@ async def hasperms(token, perms):
 
 @app.route("/week/<int:week>")
 async def week(week):
-    baseurl = request.url_root
+    baseurl = request.url_root + url_for("main.root")[1:]
     year = request.args.get("year", type=int)
+    curweek = datetime.datetime.now().isocalendar()[1]
     token = request.cookies.get("token")
     if year is None:
         year = datetime.datetime.now().year
     if is_week_in_next_year(year, week):
-        return redirect(f"/week/1?year={year+1}")
+        return redirect(url_for("main.week", week=1, year=year + 1))
     if week <= 0:
         return redirect(
-            f"/week/{datetime.date(year-1, 12, 28).isocalendar()[1]}?year={year-1}"
+            url_for(
+                "main.week",
+                week=datetime.date(year - 1, 12, 28).isocalendar()[1],
+                year=year - 1,
+            )
         )
     m2s = week_mon2sun(year, week)
     monday = m2s[0]
     links = [
         f"login - Logga in",
         f"register - Registrera nytt konto",
-        f"week/{week} - Matsedel för vecka {week}",
+        f"week/{curweek} - Matsedel för vecka {curweek}",
         f"year/{year} - Matsedel för år {year}",
     ]
     userdict = {
@@ -72,7 +77,7 @@ async def week(week):
     if token:
         info = await db.get_info_by_token(token)
         if not info:
-            return redirect("/logout")
+            return redirect(url_for("main.logout"))
 
         username, permission = info
         userdict = {"Username": username, "PermissionLevel": permission}
@@ -116,7 +121,7 @@ async def week(week):
 
 @app.route("/year/<int:year>")
 async def yearplan(year):
-    baseurl = request.url_root
+    baseurl = request.url_root + url_for("main.root")[1:]
     week = datetime.date.today().isocalendar().week
     userdict = {"Username": "Anonymous", "PermissionLevel": 0}
     token = request.cookies.get("token")
@@ -130,7 +135,7 @@ async def yearplan(year):
     if token:
         info = await db.get_info_by_token(token)
         if not info:
-            return redirect("/logout")
+            return redirect(url_for("main.logout"))
 
         username, permission = info
         userdict = {"Username": username, "PermissionLevel": permission}
@@ -168,7 +173,7 @@ async def yearplan(year):
 async def login():
     if request.method == "POST":
         try:
-            resp = make_response(redirect("/"))
+            resp = make_response(redirect(url_for("main.root")))
             resp.set_cookie(
                 "token",
                 await db.signin(request.form["username"], request.form["password"]),
@@ -181,7 +186,7 @@ async def login():
 
 @app.route("/logout")
 async def logout():
-    resp = make_response(redirect("/"))
+    resp = make_response(redirect(url_for("main.root")))
     resp.set_cookie("token", "", expires=0)  # properly clear the token from cookies.
     return resp
 
@@ -207,7 +212,7 @@ async def register():
             else:
                 raise Exception("Invalid permissions for inviter.")
 
-            resp = make_response(redirect("/"))
+            resp = make_response(redirect(url_for("main.root")))
             resp.set_cookie(
                 "token",
                 await db.signin(request.form["username"], request.form["password"]),
@@ -234,7 +239,7 @@ async def revoke_token(user):
                 "Failed to revoke token": f"Target ({user}) is too authorized for you."
             }
         await db.tokenrevoke(tinfo[1])
-        return redirect("/")
+        return redirect(url_for("main.root"))
     return {"Status": "Failed.", "Reason": "Invalid Permission"}
 
 
@@ -246,7 +251,7 @@ async def delete_account(user):
     info = await db.get_info_by_token(token)
     if await hasperms(token, 2) or info[0] == user:
         await db.delete_account(user)
-        return redirect("/")
+        return redirect(url_for("main.root"))
     return {"Status": "Failed.", "Reason": "Unauthorized."}
 
 
@@ -266,7 +271,7 @@ async def edit_permission(user, permlevel):
                 "Reason": "Can't assign higher or equal permission level.",
             }
         await db.edit_permission(user, permlevel)
-        return {"Status": "Success!"}
+        return redirect(url_for("main.root"))
     return {"Status": "Failed.", "Reason": "Invalid permissions."}
 
 
@@ -277,7 +282,7 @@ async def edit_password(user):
             await db.change_password(
                 user, request.form["oldpassword"], request.form["newpassword"]
             )
-            return redirect("/")
+            return redirect(url_for("main.root"))
         except Exception as e:
             return {"Status": "Failed.", "Reason": str(e)}
     return render_template("changepassword.html")
@@ -289,7 +294,7 @@ async def editfoodforday(year, week, weekday):
         try:
             if await hasperms(request.cookies.get("token", None), 1):
                 await db.set_food(year, week, weekday, request.form["value"])
-            return redirect(f"/week/{week}")
+            return redirect(url_for("main.week", week=week))
         except Exception as e:
             return {
                 f"Failed to set Food for {datetime.date.fromisocalendar(year,week,weekday)}": str(
@@ -306,7 +311,7 @@ async def deletefoodforday(year, week, weekday):
     try:
         if await hasperms(request.cookies.get("token", None), 1):
             await db.set_food(year, week, weekday, "")
-        return redirect(f"/week/{week}")
+        return redirect(url_for("main.week", week=week))
     except Exception as e:
         return {
             f"Failed to set Food for {datetime.date.fromisocalendar(year,week,weekday)}": str(
@@ -339,7 +344,7 @@ async def importfoodjson():
                         weekday = weekdays_en.index(day_short) + 1
                         await db.set_food(year, week, weekday, value)
 
-            return redirect("/")
+            return redirect(url_for("main.root"))
 
         except Exception as e:
             return {"error": f"Failed to import food: {str(e)}"}, 500

@@ -43,8 +43,8 @@ function togglePassword(el) {
 
 <div class="contbox">
   <h2> Inställningar och hantering</h2>
+  <hr>
   {% for username in configdict.keys() %}
-    <hr>
     <details style='margin-bottom: 5px'>
       <summary>
         {% if username == userdict['Username'] %}
