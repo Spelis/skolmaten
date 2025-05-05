@@ -2,12 +2,13 @@ import datetime
 import json
 import os
 import time
-
+from dotenv import load_dotenv
 from flask import Blueprint, make_response, redirect, render_template, request, url_for
 
 from . import db
 
-app = Blueprint("main", __name__, static_url_path=app.config["APPLICATION_ROOT"]+"/static")
+config = load_dotenv()
+app = Blueprint("main", __name__, static_url_path=os.environ.get["ROOT","/"]+"static")
 
 os.environ["TZ"] = "Europe/London"
 time.tzset()
