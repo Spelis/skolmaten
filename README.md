@@ -42,8 +42,9 @@ gunicorn -w 4 -b 0.0.0.0:8000 'skolmaten:create_app()'
 ### 3-2. Run the app through Docker
 
 ```
-docker build -t skolmaten .
-docker run -d -p 8000:8000 skolmaten
+touch database.db # create empty database
+docker build -t skolmaten . # build docker container
+docker run -d -p 8000:8000 -v ./database.db:/app/database.db skolmaten # run container and mount the database
 ```
 
 ### 3-3. Run the app in developer mode

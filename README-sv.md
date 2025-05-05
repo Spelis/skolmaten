@@ -39,8 +39,9 @@ gunicorn -w 4 -b 0.0.0.0:8000 'skolmaten:create_app()'
 ### 3-2. Kör appen via Docker
 
 ```
-docker build -t skolmaten .
-docker run -d -p 8000:8000 skolmaten
+touch database.db # skapa en tom databas
+docker build -t skolmaten . # bygg docker-container
+docker run -d -p 8000:8000 -v ./database.db:/app/database.db skolmaten # kör container och montera databasen
 ```
 
 ### 3-3. Kör appen i utvecklingsläge
