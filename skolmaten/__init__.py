@@ -6,7 +6,7 @@ from flask import Flask
 
 
 def create_app():
-    config = dotenv_values("../.env")
+    config = dotenv_values(".env")
     app = Flask(__name__, template_folder="../templates/", static_folder="../static/")
     app.config.from_mapping(DATABASE="database.db")
     app.secret_key = uuid.uuid4().hex
