@@ -19,6 +19,6 @@ def create_app():
 
     from . import app as main_routes
 
-    app.register_blueprint(main_routes.app, url_prefix=app.config["APPLICATION_ROOT"], static_url_path=app.config["APPLICATION_ROOT"]+"/static")
+    app.register_blueprint(main_routes.app, url_prefix=app.config["APPLICATION_ROOT"])
 
     return app

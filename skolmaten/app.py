@@ -7,7 +7,7 @@ from flask import Blueprint, make_response, redirect, render_template, request, 
 
 from . import db
 
-app = Blueprint("main", __name__)
+app = Blueprint("main", __name__, static_url_path=app.config["APPLICATION_ROOT"]+"/static")
 
 os.environ["TZ"] = "Europe/London"
 time.tzset()
