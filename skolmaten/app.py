@@ -2,14 +2,24 @@ import datetime
 import json
 import os
 import time
+
 from dotenv import load_dotenv
-from flask import Blueprint, make_response, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    Response,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 
 from . import db
 
 config = load_dotenv()
-app = Blueprint("main", __name__, static_url_path=os.environ.get("ROOT","/")+"static")
-
+app = Blueprint(
+    "main", __name__, static_url_path=os.environ.get("ROOT", "/") + "static"
+)
 os.environ["TZ"] = "Europe/London"
 time.tzset()
 
@@ -43,6 +53,13 @@ async def hasperms(token, perms):
     if info[1] >= perms:
         return True
     return False
+
+
+# for dynamic urls in css (used for font)
+@app.route("/static/style.css")
+def dynamic_css():
+    css = render_template("style.css")
+    return Response(css, mimetype="text/css")
 
 
 @app.route("/week/<int:week>")

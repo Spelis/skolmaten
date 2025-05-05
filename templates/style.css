@@ -1,6 +1,6 @@
 @font-face {
 	font-family: 'JetBrains';
-	src: url('/static/jetbrains.ttf');
+	src: url('{{ url_for("static", filename="jetbrains.ttf") }}');
 }
 
 :root {
