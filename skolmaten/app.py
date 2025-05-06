@@ -89,16 +89,21 @@ async def week(week):
         f"year/{year} - Matsedel för år {year}",
     ]
     userdict = {
-        "Username": "Anonymous",
+        "Username": "anonymous",
         "PermissionLevel": 0,
+        "Display": "Anonymous",
     }  # fallback if user isnt logged in.
     if token:
         info = await db.get_info_by_token(token)
         if not info:
             return redirect(url_for("main.logout"))
 
-        username, permission = info
-        userdict = {"Username": username, "PermissionLevel": permission}
+        username, permission, display = info
+        userdict = {
+            "Username": username,
+            "PermissionLevel": permission,
+            "Display": display,
+        }
 
         if permission >= 2:
             userdict["Hantera"] = await db.get_all_users(baseurl)
@@ -108,6 +113,7 @@ async def week(week):
             1,
             "logout - Logga ut",
         )
+        links.append(f"mgr/edtdsp/{userdict['Username']} - Byt namn")
 
     if userdict["Username"] != "Anonymous":
         links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")
@@ -155,7 +161,7 @@ async def yearplan(year):
         if not info:
             return redirect(url_for("main.logout"))
 
-        username, permission = info
+        username, permission, display = info
         userdict = {"Username": username, "PermissionLevel": permission}
 
         if permission >= 2:
@@ -166,6 +172,7 @@ async def yearplan(year):
             1,
             "logout - Logga ut",
         )
+        links.append(f"mgr/edtdsp/{userdict['Username']} - Byt namn")
 
     if userdict["Username"] != "Anonymous":
         links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")
@@ -194,7 +201,9 @@ async def login():
             resp = make_response(redirect(url_for("main.root")))
             resp.set_cookie(
                 "token",
-                await db.signin(request.form["username"], request.form["password"]),
+                await db.signin(
+                    request.form["username"].lower(), request.form["password"]
+                ),
             )
             return resp
         except Exception as e:
@@ -222,7 +231,9 @@ async def register():
             resp = make_response(redirect(url_for("main.root")))
             resp.set_cookie(
                 "token",
-                await db.signin(request.form["username"], request.form["password"]),
+                await db.signin(
+                    request.form["username"].lower(), request.form["password"]
+                ),
             )  # log in after registering
             return resp
         except Exception as e:
@@ -260,6 +271,23 @@ async def delete_account(user):
         await db.delete_account(user)
         return redirect(url_for("main.root"))
     return {"Status": "Failed.", "Reason": "Unauthorized."}
+
+
+@app.route("/mgr/edtdsp/<user>", methods=["GET", "POST"])
+async def edit_display_name(user):
+    if request.method == "POST":
+        try:
+            token = request.cookies.get("token", None)
+            if token is None:
+                raise Exception("Unauthorized")
+            info = await db.get_info_by_token(token)
+            if await hasperms(token, 2) or info[0] == user:
+                await db.changedisplay(user, request.form.get("display"))
+
+            return redirect(url_for("main.root"))
+        except Exception as e:
+            return {"Status": "Failed.", "Reason": str(e)}
+    return render_template("changedisplay.html")
 
 
 @app.route("/mgr/edtprm/<string:user>/<int:permlevel>")
@@ -357,3 +385,45 @@ async def importfoodjson():
             return {"error": f"Failed to import food: {str(e)}"}, 500
 
     return render_template("import.html")
+
+
+@app.route("/comments/day/<int:year>/<int:week>/<int:weekday>")
+async def comments(year, week, weekday):
+    commlist = await db.getcomments(year, week, weekday)
+    return render_template(
+        "comments.html",
+        timestr=datetime.datetime.fromisocalendar(year, week, weekday + 1).strftime(
+            "%a %d %b"
+        ),
+        year=year,
+        week=week,
+        weekday=weekday,
+        comments=commlist,
+    )
+
+
+@app.route("/comments/add/<int:year>/<int:week>/<int:weekday>", methods=["GET", "POST"])
+async def addcomment(year, week, weekday):
+    if request.method == "POST":
+        try:
+            token = request.cookies.get("token")
+            if not token:
+                raise Exception("Unauthorized")
+            info = await db.get_info_by_token(token)
+            if info is None:
+                raise Exception("Unauthorized")
+            value = str(request.form.get("value", "")).strip()
+            if not value:
+                raise Exception("Invalid comment")
+            await db.addcomment(year, week, weekday, info[0], value, info[2])
+            return redirect(
+                url_for("main.comments", year=year, week=week, weekday=weekday)
+            )
+        except Exception as e:
+            return {"error": f"Failed to add comment: {str(e)}"}, 500
+    return render_template(
+        "addcommentmodal.html",
+        timestr=datetime.datetime.fromisocalendar(year, week, weekday + 1).strftime(
+            "%a %d %b"
+        ),
+    )

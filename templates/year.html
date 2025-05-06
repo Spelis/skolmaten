@@ -1,15 +1,15 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
 <script>
 function togglePassword(el) {
-  const input = el.closest('li').querySelector('input.userpassword');
-  if (input.type === 'password') {
-    input.type = 'text';
-    el.textContent = '󰈈 ';
+  const input = el.closest("li").querySelector("span.userpassword");
+  if (input.classList.contains("hidepass")) {
+    el.textContent = "󰈈 "; // open eye
+    input.classList.remove("hidepass");
   } else {
-    input.type = 'password';
-    el.textContent = '󰈉 ';
+    el.textContent = "󰈉 "; // closed eye
+    input.classList.toggle("hidepass");
   }
 }
 </script>
@@ -17,21 +17,24 @@ function togglePassword(el) {
 
 <div class="contbox" style="position:relative;">
   <div style="display: flex; align-items: center; justify-content: space-between">
-    <a href="{{ baseurl+'year/'+str(year-1) }}" class="weeknavb"></a>
+    <a href="{{ baseurl+"year/"+str(year-1) }}" class="weeknavb"></a>
     <h2 style="margin-top:1em;">󰃭 {% block title %}År {{ year }}{% endblock %}:</h2>
-    <a href="{{ baseurl+'year/'+str(year+1) }}" class="weeknavb"></a>
+    <a href="{{ baseurl+"year/"+str(year+1) }}" class="weeknavb"></a>
   </div>
   <hr>
   {% for weekdata in schema %}
-    <h3>Vecka {{ weekdata.week }} ({{ weekdata.date.strftime('%d %b') }})</h3>
+    <h3>Vecka {{ weekdata.week }} ({{ weekdata.date.strftime("%d %b") }})</h3>
     {% for day in weekdata.days %}
-    <p class="truncatecont">{{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() + (day.day-1)*86400).strftime('%d %b') }}: <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
-      {% if userdict['PermissionLevel'] >= 2 %}
+    <p class="truncatecont">{{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() + (day.day-1)*86400).strftime("%d %b") }}: <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
         <span class="weekplancontrol" style="float:right;">
+	{% if userdict.Username %}
+	<a href="{{ url_for("main.comments",year=year,week=weekdata.week,weekday=day["day"]) }}">󰅺 </a>
+      {% endif %}
+      {% if userdict.PermissionLevel >= 2 %}
           <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/set"> </a>
           <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/del"> </a>
-        </span>
       {% endif %}
+        </span>
     </p>
     {% endfor %}
   {% endfor %}
@@ -41,7 +44,7 @@ function togglePassword(el) {
   <h2> Länkar</h2>
   <hr>
   {% for i in links %}
-    <p><a href="{{ baseurl+i.split('-')[0].strip() }}">{{ i.split('-')[1].strip() }}  </a></p>
+    <p><a href="{{ baseurl+i.split("-")[0].strip() }}">{{ i.split("-")[1].strip() }}  </a></p>
   {% endfor %}
 </div>
 
@@ -49,34 +52,36 @@ function togglePassword(el) {
   <h2> Inställningar och hantering</h2>
   <hr>
   {% for username in configdict.keys() %}
-    <details style='margin-bottom: 5px;'>
+    <details style="margin-bottom: 5px">
       <summary>
-        {% if username == userdict['Username'] %}
-        <span title="Du är inloggad som {{ username }}"></span>
+        {% if username == userdict["Username"] %}
+        <span title="Du är inloggad som {{ username }}"> </span>
         {% endif %}
-        {{ username }}
-        <span class="weekplancontrol" style='float:right;'>
-          <a href="{{ configdict[username]['delete_account'] }}"> </a>
-          <a href="{{ configdict[username]['revoke_token'] }}">󰌊</a>
+	{{ username }} ({{ configdict[username]["display"] }})
+        <span class="weekplancontrol" style="float:right;">
+          <a href="{{ configdict[username]["delete_account"] }}"> </a>
+          <a href="{{ configdict[username]["revoke_token"] }}">󰌊</a>
         </span>
       </summary>
       <ul style="margin:0;margin-top:5px;">
-        <li style="margin-bottom: 5px;">
-          <strong>Lösenord:</strong>
-          <input type=password value="{{ configdict[username]['pass'] }}" disabled=true class="userpassword">
-          <span class="weekplancontrol" style='float:right;'>
-            <a href="{{ configdict[username]['change_password'] }}"> </a>
+        <li style="margin-bottom: 5px;" class="truncatecont">
+          <strong>Password:</strong>
+	  <span class="userpassword hidepass truncate">{{ configdict[username]["pass"] }}</span>
+          <span class="weekplancontrol" style="float:right;">
+            <a href="{{ configdict[username]["change_password"] }}"> </a>
             <a href="javascript:void(0);" onclick="togglePassword(this)">󰈉 </a>
           </span>
         </li>
-        <li><strong>Behörighet:</strong>
-          {{ list(configdict[username]['auth'].values())[0] }}
-          {% if userdict['PermissionLevel'] >= 2 %}
-          <span class="weekplancontrol" style='float:right;'>
-            <a href="{{ configdict[username]['change_permission']['User'] }}"> </a>
-            <a href="{{ configdict[username]['change_permission']['FoodEditor'] }}">󰭼 </a>
-            <a href="{{ configdict[username]['change_permission']['Moderator'] }}"> </a>
-            <a href="{{ configdict[username]['change_permission']['Admin'] }}"> </a>
+        <li class="truncatecont"><strong>Permissions:</strong>
+		<span class="truncate">
+          {{ list(configdict[username]["auth"].values())[0] }}
+		</span>
+          {% if userdict["PermissionLevel"] >= 2 %}
+          <span class="weekplancontrol" style="float:right;">
+            <a href="{{ configdict[username]["change_permission"]["User"] }}"> </a>
+            <a href="{{ configdict[username]["change_permission"]["FoodEditor"] }}">󰭼 </a>
+            <a href="{{ configdict[username]["change_permission"]["Moderator"] }}"> </a>
+            <a href="{{ configdict[username]["change_permission"]["Admin"] }}"> </a>
           </span>
           {% endif %}
         </li>

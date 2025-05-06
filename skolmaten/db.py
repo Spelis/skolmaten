@@ -36,7 +36,8 @@ async def create_schema():
                 token TEXT,
                 name TEXT PRIMARY KEY UNIQUE,
                 pass TEXT NOT NULL,
-                authlvl INTEGER DEFAULT 0
+                authlvl INTEGER DEFAULT 0,
+                display TEXT
             );
         """
         )
@@ -51,6 +52,19 @@ async def create_schema():
                 thu TEXT,
                 fri TEXT
             );
+        """
+        )
+        await db.execute(
+            """
+                CREATE TABLE IF NOT EXISTS comments (
+                week INT,
+                year INT,
+                day INT,
+                id INT PRIMARY KEY,
+                value TEXT,
+                author TEXT,
+                username TEXT
+                );
         """
         )
         await db.commit()
@@ -93,8 +107,8 @@ async def register(username: str, passwd: str, authlvl):
             raise Exception("User already exists")
 
         await db.execute(
-            "INSERT INTO users (token, name, pass, authlvl) VALUES (?, ?, ?, ?)",
-            (generate_jwt_token(username), username, passwd, authlvl),
+            "INSERT INTO users (token, name, pass, authlvl,display) VALUES (?, ?, ?, ?,?)",
+            (generate_jwt_token(username), username.lower(), passwd, authlvl, username),
         )
         await db.commit()
 
@@ -102,10 +116,10 @@ async def register(username: str, passwd: str, authlvl):
 async def get_info_by_token(token):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT name,authlvl FROM users WHERE token = ?", (token,)
+            "SELECT name,authlvl,display FROM users WHERE token = ?", (token,)
         ) as cursor:
             row = await cursor.fetchone()
-            return (row[0], row[1]) if row else None
+            return (row[0], row[1], row[2]) if row else None
 
 
 async def get_all_users(baseurl: str):
@@ -117,6 +131,7 @@ async def get_all_users(baseurl: str):
                 r[row[1]] = {
                     "token": row[0],
                     "name": row[1],
+                    "display": row[4],
                     "pass": row[2],
                     "auth": {row[3]: AuthLevels(row[3]).name},
                     "revoke_token": baseurl + f"mgr/tokrev/{row[1]}",
@@ -134,7 +149,7 @@ async def get_all_users(baseurl: str):
 async def get_self(baseurl: str, name: str):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT pass,name,authlvl FROM users WHERE name = ?", (name,)
+            "SELECT pass,name,authlvl,display FROM users WHERE name = ?", (name,)
         ) as cursor:
             rows = await cursor.fetchall()
             r = {}
@@ -142,6 +157,7 @@ async def get_self(baseurl: str, name: str):
                 r[row[1]] = {
                     "name": row[1],
                     "pass": row[0],
+                    "display": row[3],
                     "auth": {row[2]: AuthLevels(row[2]).name},
                     "revoke_token": baseurl + f"mgr/tokrev/{row[1]}",
                     "delete_account": baseurl + f"mgr/accdel/{row[1]}",
@@ -251,6 +267,43 @@ async def change_password(name, old, new):
         if not current or current[0] != old:
             raise Exception("Incorrect current password.")
         await db.execute("UPDATE users SET pass = ? WHERE name = ?", (new, name))
+        await db.commit()
+
+
+async def getcomments(year, week, weekday):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+            "SELECT author, value, id, username FROM comments WHERE year = ? AND week = ? AND day = ?",
+            (year, week, weekday),
+        ) as cursor:
+            selection = await cursor.fetchall()
+
+        r = []
+        for row in selection:
+            r.append(
+                {"name": row[0], "comment": row[1], "id": row[2], "author": row[3]}
+            )
+        return r
+
+
+async def addcomment(year, week, weekday, author, value, display):
+    async with aiosqlite.connect("database.db") as db:
+        await db.execute(
+            "INSERT INTO comments ( year, week, day, author, value, id, username ) VALUES ( ?, ?, ?, ?, ?, ?, ? )",
+            (year, week, weekday, display, value, await numcomments(), author),
+        )
+        await db.commit()
+
+
+async def numcomments():
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute("SELECT id FROM comments") as cursor:
+            return len(list(await cursor.fetchall()))
+
+
+async def changedisplay(user, new):
+    async with aiosqlite.connect("database.db") as db:
+        await db.execute("UPDATE users SET display = ? WHERE name = ?", (new, user))
         await db.commit()
 
 

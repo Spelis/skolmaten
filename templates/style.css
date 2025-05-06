@@ -13,6 +13,7 @@
 	--teal: #94e2d5;
 	--teal-40: #94e2d540;
 	--hover-bg: var(--teal-40);
+	--subtext: #6c6f85;
 
 	/* Light theme counterparts */
 	--text-light: #4c4f69;
@@ -36,6 +37,7 @@ body.light {
 	--teal: var(--teal-light);
 	--teal-40: var(--teal-light-40);
 	--hover-bg: var(--hover-bg-light);
+	--subtext: #a6adc8;
 }
 
 
@@ -89,6 +91,7 @@ a {
 	transition: color .3s ease, background .3s ease;
 	border-radius: 5px;
 	padding: 3px 7px 3px 3px;
+	text-decoration: none;
 }
 a:hover {
 	color: var(--teal);
@@ -121,7 +124,7 @@ nav {
 	border-bottom: 2px solid var(--border);
 }
 
-nav > h1 > a {
+nav > * > a {
 	text-decoration: none;
 	color: var(--text);
 }
@@ -148,6 +151,7 @@ nav > h1 > a {
 	padding: 1em 2em;
 	border-radius: 8px;
 	position: relative;
+	border: 2px solid var(--border);
 }
 .modal-content input, .modal-content select {
 	background: var(--bg);

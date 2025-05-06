@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Comments{% endblock %}
+
+{% block content %}
+<div id="modal" class="modal">
+  <div class="modal-content">
+	  <h2 style="display:inline-block">Kommentarer {{ timestr }}:</h2> <a href="{{ url_for('main.addcomment',year=year,week=week,weekday=weekday) }}">+</a>
+	  <div style="max-height: 1000px; text-align: left;">
+	  {% for comment in comments %}
+	  <p title="ID: {{ comment['id'] }}, Author: {{ comment['author'] }}">{{ comment['name'] }}: <span style="color: var(--subtext)">{{ comment['comment'] }}</span></p>
+	  {% endfor %}
+	  </div>
+  </div>
+</div>
+{% endblock %}

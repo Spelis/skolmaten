@@ -1,0 +1,10 @@
+{% extends 'modal.html' %}
+{% block title %}Login{% endblock %}
+
+{% block modal_body %}
+<h2>Ändra namn</h2>
+<form method="post">
+	<input type="text" name="display" placeholder="Nytt namn" required><br>
+  <input type="submit" value="Ändra Namn">
+</form>
+{% endblock %}
