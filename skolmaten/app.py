@@ -187,8 +187,8 @@ async def yearplan(year):
     comlen = []
     for week in range(0, 53):  # Weeks 1–52
         week_counts = []
-        for day in range(6):  # 0–4, Mon–Fri
-            comments = await db.getcomments(year, week, day + 1)
+        for day in range(5):  # 0–4, Mon–Fri
+            comments = await db.getcomments(year, week, day)
             week_counts.append(len(comments))
         comlen.append(week_counts)
 
