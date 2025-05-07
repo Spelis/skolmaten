@@ -11,8 +11,8 @@ from flask import (
     redirect,
     render_template,
     request,
-    url_for,
     session,
+    url_for,
 )
 
 from . import db
@@ -39,6 +39,7 @@ def week_mon2sun(year, week):
 def is_week_in_next_year(year, week_num):
     max_weeks = datetime.date(year, 12, 28).isocalendar()[1]
     return week_num > max_weeks
+
 
 @app.route("/")
 def root():
@@ -120,6 +121,8 @@ async def week(week):
     if userdict["PermissionLevel"] >= 1:
         links.append(f"mgr/food/import - Importera matsedel från JSON")
 
+    comlen = [len(await db.getcomments(year, week, i)) for i in range(5)]
+
     return render_template(
         "week.html",
         weekdata=monday,
@@ -140,7 +143,8 @@ async def week(week):
         configdict=userdict.get("Hantera", {}),
         list=list,
         datetime=datetime.datetime,
-        comments=await db.getallcomments()
+        comlen=comlen,
+        len=len,
     )
 
 
@@ -180,19 +184,27 @@ async def yearplan(year):
     if userdict["PermissionLevel"] >= 1:
         links.append(f"mgr/food/import - Importera matsedel från JSON")
 
+    comlen = []
+    for week in range(0, 53):  # Weeks 1–52
+        week_counts = []
+        for day in range(6):  # 0–4, Mon–Fri
+            comments = await db.getcomments(year, week, day + 1)
+            week_counts.append(len(comments))
+        comlen.append(week_counts)
+
     return render_template(
         "year.html",
-        year=year,
         weekday=weekdays,
         schema=await db.get_food_year(year),
         links=links,
+        year=year,
         baseurl=baseurl,
         userdict=userdict,
         configdict=userdict.get("Hantera", {}),
         str=str,
         list=list,
         datetime=datetime.datetime,
-        comments=await db.getallcomments()
+        comlen=comlen,
     )
 
 
@@ -392,8 +404,8 @@ async def importfoodjson():
 @app.route("/comments/day/<int:year>/<int:week>/<int:weekday>")
 async def comments(year, week, weekday):
     commlist = await db.getcomments(year, week, weekday)
-    hasperm = await hasperms(request.cookies.get('token'),0)
-    session['back'] = request.url
+    hasperm = await hasperms(request.cookies.get("token"), 0)
+    session["back"] = request.url
     return render_template(
         "comments.html",
         timestr=datetime.datetime.fromisocalendar(year, week, weekday + 1).strftime(
@@ -403,8 +415,9 @@ async def comments(year, week, weekday):
         week=week,
         weekday=weekday,
         comments=commlist,
-        hasperm=hasperm
+        hasperm=hasperm,
     )
+
 
 @app.route("/comments/all")
 async def allcomments():
@@ -432,6 +445,7 @@ async def addcomment(year, week, weekday):
         except Exception as e:
             return {"error": f"Failed to add comment: {str(e)}"}, 500
 
+
 @app.route("/comments/del/<int:id>")
 async def delcomment(id):
     try:
@@ -440,9 +454,8 @@ async def delcomment(id):
         if (not token) or (not token):
             raise Exception("Unauthorized")
         user = await db.get_author_by_comment_id(id)
-        if await hasperms(token,2) or info[0] == user:
+        if await hasperms(token, 2) or info[0] == user:
             await db.delcomment(id)
-            return redirect(url_for('main.root'))
+            return redirect(url_for("main.root"))
     except Exception as e:
-        return {"Failed":str(e)}
-
+        return {"Failed": str(e)}

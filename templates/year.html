@@ -27,7 +27,7 @@ function togglePassword(el) {
     {% for day in weekdata.days %}
     <p class="truncatecont">{{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() + (day.day-1)*86400).strftime("%d %b") }}: <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
         <span class="weekplancontrol" style="float:right;">
-		<a href="{{ url_for("main.comments",year=year,week=weekdata.week,weekday=day["day"]) }}">󰅺 {{ comments }}</a>
+		<a href="{{ url_for("main.comments",year=year,week=weekdata.week,weekday=day["day"]) }}">󰅺 </a><sup>{{ comlen[weekdata.week][day.day-1] }}</sup>
       {% if userdict.PermissionLevel >= 2 %}
           <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/set"> </a>
           <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/del"> </a>
