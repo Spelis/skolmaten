@@ -273,7 +273,7 @@ async def change_password(name, old, new):
 async def getcomments(year, week, weekday):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT author, value, id, username FROM comments WHERE year = ? AND week = ? AND day = ?",
+            "SELECT value, id, username FROM comments WHERE year = ? AND week = ? AND day = ?",
             (year, week, weekday),
         ) as cursor:
             selection = await cursor.fetchall()
@@ -281,7 +281,7 @@ async def getcomments(year, week, weekday):
         r = []
         for row in selection:
             r.append(
-                {"name": row[0], "comment": row[1], "id": row[2], "author": row[3]}
+                {"name": (await get_self("/",row[2]))[row[2]]['display'], "comment": row[0], "id": row[1], "author": row[2]}
             )
         return r
 
@@ -306,6 +306,16 @@ async def changedisplay(user, new):
         await db.execute("UPDATE users SET display = ? WHERE name = ?", (new, user))
         await db.commit()
 
+
+async def get_author_by_comment_id(id:int):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute("SELECT author FROM comments WHERE id = ?", (id,)) as cursor:
+                              return (await cursor.fetchone())[0]
+
+async def delcomment(id):
+    async with aiosqlite.connect("database.db") as db:
+        await db.execute("UPDATE comments SET value = ? WHERE id = ?", ("<Deleted>",id,))
+        await db.commit()
 
 def init_app():
     asyncio.run(create_schema())

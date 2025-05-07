@@ -12,6 +12,7 @@ from flask import (
     render_template,
     request,
     url_for,
+    session
 )
 
 from . import db
@@ -90,7 +91,7 @@ async def week(week):
     ]
     userdict = {
         "Username": "anonymous",
-        "PermissionLevel": 0,
+        "PermissionLevel": -1,
         "Display": "Anonymous",
     }  # fallback if user isnt logged in.
     if token:
@@ -147,7 +148,7 @@ async def week(week):
 async def yearplan(year):
     baseurl = request.url_root + url_for("main.root")[1:]
     week = datetime.date.today().isocalendar().week
-    userdict = {"Username": "Anonymous", "PermissionLevel": 0}
+    userdict = {"Username": "anonymous", "PermissionLevel": -1, "Display": "Anonymous"}
     token = request.cookies.get("token")
 
     links = [
@@ -390,6 +391,8 @@ async def importfoodjson():
 @app.route("/comments/day/<int:year>/<int:week>/<int:weekday>")
 async def comments(year, week, weekday):
     commlist = await db.getcomments(year, week, weekday)
+    hasperm = await hasperms(request.cookies.get('token'),0)
+    session['back'] = request.url
     return render_template(
         "comments.html",
         timestr=datetime.datetime.fromisocalendar(year, week, weekday + 1).strftime(
@@ -399,10 +402,11 @@ async def comments(year, week, weekday):
         week=week,
         weekday=weekday,
         comments=commlist,
+        hasperm=hasperm
     )
 
 
-@app.route("/comments/add/<int:year>/<int:week>/<int:weekday>", methods=["GET", "POST"])
+@app.route("/comments/add/<int:year>/<int:week>/<int:weekday>", methods=["POST"])
 async def addcomment(year, week, weekday):
     if request.method == "POST":
         try:
@@ -421,9 +425,18 @@ async def addcomment(year, week, weekday):
             )
         except Exception as e:
             return {"error": f"Failed to add comment: {str(e)}"}, 500
-    return render_template(
-        "addcommentmodal.html",
-        timestr=datetime.datetime.fromisocalendar(year, week, weekday + 1).strftime(
-            "%a %d %b"
-        ),
-    )
+
+@app.route("/comments/del/<int:id>")
+async def delcomment(id):
+    try:
+        token = request.cookies.get("token")
+        info = await db.get_info_by_token(token)
+        if (not token) or (not token):
+            raise Exception("Unauthorized")
+        user = await db.get_author_by_comment_id(id)
+        if await hasperms(token,2) or info[0] == user:
+            await db.delcomment(id)
+            return redirect(url_for('main.root'))
+    except Exception as e:
+        return {"Failed":str(e)}
+
