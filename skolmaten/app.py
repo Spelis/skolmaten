@@ -12,7 +12,7 @@ from flask import (
     render_template,
     request,
     url_for,
-    session
+    session,
 )
 
 from . import db
@@ -39,7 +39,6 @@ def week_mon2sun(year, week):
 def is_week_in_next_year(year, week_num):
     max_weeks = datetime.date(year, 12, 28).isocalendar()[1]
     return week_num > max_weeks
-
 
 @app.route("/")
 def root():
@@ -141,6 +140,7 @@ async def week(week):
         configdict=userdict.get("Hantera", {}),
         list=list,
         datetime=datetime.datetime,
+        comments=await db.getallcomments()
     )
 
 
@@ -192,6 +192,7 @@ async def yearplan(year):
         str=str,
         list=list,
         datetime=datetime.datetime,
+        comments=await db.getallcomments()
     )
 
 
@@ -404,6 +405,11 @@ async def comments(year, week, weekday):
         comments=commlist,
         hasperm=hasperm
     )
+
+@app.route("/comments/all")
+async def allcomments():
+    commlist = await db.getallcomments()
+    return commlist
 
 
 @app.route("/comments/add/<int:year>/<int:week>/<int:weekday>", methods=["POST"])

@@ -24,7 +24,8 @@ function togglePassword(el) {
   {% for i in range(5) %}
   <p class="truncatecont">{{ weekday[i].capitalize() }} {{ datetime.fromtimestamp(weekdata.timestamp() + (i)*86400).strftime('%d %b') }}: <span class="truncate" title="{{ schema[i][1] }}">{{ schema[i][1] }}</span>
       <span class="weekplancontrol" style='float:right;'>
-	<a href="{{ url_for('main.comments',year=year,week=week,weekday=i) }}">󰅺 </a>
+	      {} len({k:v for k,v in comments.items() if v["date"][1] == year and v["date"][2] == week and v["date"][3] == i+1})
+	      <a href="{{ url_for('main.comments',year=year,week=week,weekday=i) }}">󰅺 {{ }}</a>
       {% if userdict['PermissionLevel'] >= 2 %}
         <a href="{{ schema[i][0]+'set' }}"> </a>
         <a href="{{ schema[i][0]+'del' }}"> </a>

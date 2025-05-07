@@ -317,5 +317,17 @@ async def delcomment(id):
         await db.execute("UPDATE comments SET value = ? WHERE id = ?", ("<Deleted>",id,))
         await db.commit()
 
+async def getallcomments():
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+            "SELECT value, id, username,year,week,day FROM comments",
+        ) as cursor:
+            selection = await cursor.fetchall()
+
+        r = {}
+        for row in selection:
+            r[str(datetime.datetime.fromisocalendar(row[3],row[4],row[5]+1).strftime("%a %b %d %Y "))+str(row[1])] = {"name": (await get_self("/",row[2]))[row[2]]['display'], "comment": row[0], "id": row[1], "author": row[2], "date":[datetime.datetime.fromisocalendar(row[3],row[4],row[5]+1),row[3],row[4],row[5]]}
+        return r
+
 def init_app():
     asyncio.run(create_schema())
