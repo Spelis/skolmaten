@@ -92,7 +92,7 @@ async def create_schema():
         await db.commit()
 
         async with db.execute(
-            "SELECT 1 FROM users WHERE id = ? AND authlvl = ?", (0, 3)
+            "SELECT 1 FROM users WHERE name = ?", ("adminacc",)
         ) as cursor:
             exists = await cursor.fetchone()
 
