@@ -16,7 +16,8 @@
         <div style="position: sticky;
                     top: 0;
                     padding-top: 32px;
-                    background-color: var(--bg-dark)">
+                    background-color: var(--bg-dark);
+                    z-index: 100">
             <div style="display: flex;
                         align-items: center;
                         justify-content: space-between">
@@ -40,10 +41,10 @@
                     (day.day-1)*86400).strftime('%d %b') }}:
                     <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
                     <span class="weekplancontrol" style="float: right">
-                        <a href="{{ url_for('main.comments', year=year, week=week, weekday=i) }}"
+                        <a href="{{ url_for('main.comments', year=year, week=weekdata.week, weekday=day.day-1) }}"
                            class="comment-link">
                             󰅺
-                            <sup class="comment-count">{{ comlen[i] }}</sup>
+                            <sup class="comment-count">{{ comlen[weekdata.week-1][day.day-1] }}</sup>
                         </a>
                         {% if userdict[loginid]['auth'] >= 2 %}
                             <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/set"></a>

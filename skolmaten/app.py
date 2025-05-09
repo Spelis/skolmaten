@@ -60,6 +60,8 @@ async def hasperms(token, perms):
     if token is None:
         return False
     info: dict = await db.user_by_token(token)
+    if not info:
+        return False
     if info["auth"] >= perms:
         return True
     return False

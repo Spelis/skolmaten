@@ -38,7 +38,7 @@ async def get_next_user_id():
     async with aiosqlite.connect("database.db") as db:
         async with db.execute("SELECT MAX(id) FROM users") as cursor:
             row = await cursor.fetchone()
-            return (row[0] or 0) + 1
+            return row[0] or 0
 
 
 def generate_jwt_token(name: str) -> str:
