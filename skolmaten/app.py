@@ -1,7 +1,9 @@
 import datetime
 import json
 import os
+import re
 import time
+from functools import wraps
 
 from dotenv import load_dotenv
 from flask import (
@@ -17,7 +19,6 @@ from flask import (
 
 from . import db
 
-config = load_dotenv()
 app = Blueprint(
     "main", __name__, static_url_path=os.environ.get("ROOT", "/") + "static"
 )
@@ -43,15 +44,23 @@ def is_week_in_next_year(year, week_num):
 
 @app.route("/")
 def root():
-    week = datetime.datetime.now().isocalendar()[1]
-    return redirect(url_for("main.week", week=week))
+    today = datetime.date.today()
+    now = datetime.datetime.now()
+
+    # If it's Saturday, Sunday, or Friday afternoon (12:00 PM onwards)
+    if today.isoweekday() >= 6 or (today.isoweekday() == 5 and now.hour >= 12):
+        today += datetime.timedelta(days=8 - today.isoweekday())
+
+    week = today.isocalendar()[1]
+    year = today.year  # Get the current year
+    return redirect(url_for("main.week", year=year, week=week))
 
 
 async def hasperms(token, perms):
     if token is None:
         return False
-    info = await db.get_info_by_token(token)
-    if info[1] >= perms:
+    info: dict = await db.user_by_token(token)
+    if info["auth"] >= perms:
         return True
     return False
 
@@ -66,11 +75,9 @@ def dynamic_css():
 @app.route("/week/<int:week>")
 async def week(week):
     baseurl = request.url_root + url_for("main.root")[1:]
-    year = request.args.get("year", type=int)
+    year = request.args.get("year", type=int, default=datetime.datetime.now().year)
     curweek = datetime.datetime.now().isocalendar()[1]
     token = request.cookies.get("token")
-    if year is None:
-        year = datetime.datetime.now().year
     if is_week_in_next_year(year, week):
         return redirect(url_for("main.week", week=1, year=year + 1))
     if week <= 0:
@@ -81,131 +88,129 @@ async def week(week):
                 year=year - 1,
             )
         )
-    m2s = week_mon2sun(year, week)
-    monday = m2s[0]
+    monday = datetime.datetime.fromisocalendar(year, week, 1)
+
     links = [
         f"login - Logga in",
         f"register - Registrera nytt konto",
         f"week/{curweek} - Matsedel för vecka {curweek}",
         f"year/{year} - Matsedel för år {year}",
     ]
-    userdict = {
-        "Username": "anonymous",
-        "PermissionLevel": -1,
-        "Display": "Anonymous",
-    }  # fallback if user isnt logged in.
-    if token:
-        info = await db.get_info_by_token(token)
-        if not info:
-            return redirect(url_for("main.logout"))
+    i = await db.id_by_token(str(token))
+    if await hasperms(token, 2):
+        userdict = await db.get_all_users()
+    elif i is None:
+        userdict = [{"name": "null", "auth": -1, "id": -1, "display": "Null"}]
+    elif token is not None:
+        userdict = [await db.user_by_id(int(i))]
+        i = 0
+    else:
+        userdict = []  # should never happen but just in case
 
-        username, permission, display = info
-        userdict = {
-            "Username": username,
-            "PermissionLevel": permission,
-            "Display": display,
-        }
-
-        if permission >= 2:
-            userdict["Hantera"] = await db.get_all_users(baseurl)
-        else:
-            userdict["Hantera"] = await db.get_self(baseurl, username)
+    if token and (i is not None):
+        links.append(f"mgr/edtpwd/{i} - Ändra lösenord")
         links.insert(
             1,
             "logout - Logga ut",
         )
-        links.append(f"mgr/edtdsp/{userdict['Username']} - Byt namn")
-
-    if userdict["Username"] != "Anonymous":
-        links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")
-    if userdict["PermissionLevel"] >= 1:
+        links.append(f"mgr/edtdsp/{i} - Byt namn")
+    if await hasperms(token, 1):
         links.append(f"mgr/food/import - Importera matsedel från JSON")
 
     comlen = [len(await db.getcomments(year, week, i)) for i in range(5)]
+    foodplan = []
+    for weekday in range(5):
+        foodplan.append(
+            [
+                url_for(
+                    "main.editfoodforday", year=year, week=week, weekday=weekday + 1
+                ),
+                await db.get_food(year, week, weekday),
+            ]
+        )
 
     return render_template(
         "week.html",
-        weekdata=monday,
-        week=week,
         year=year,
+        week=week,
         weekday=weekdays,
-        schema=[
-            [
-                baseurl + f"mgr/food/{year}/{week}/{i+1}/",
-                await db.get_food(year, week, i),
-            ]
-            for i in range(0, 5)
-        ],
-        links=links,
-        baseurl=baseurl,
+        curweek=curweek,
         userdict=userdict,
+        loginid=i if i is not None else -1,
+        baseurl=baseurl,
         str=str,
-        configdict=userdict.get("Hantera", {}),
         list=list,
+        int=int,
         datetime=datetime.datetime,
+        weekdata=monday,
+        schema=foodplan,
         comlen=comlen,
-        len=len,
+        links=links,
     )
 
 
 @app.route("/year/<int:year>")
 async def yearplan(year):
     baseurl = request.url_root + url_for("main.root")[1:]
-    week = datetime.date.today().isocalendar().week
-    userdict = {"Username": "anonymous", "PermissionLevel": -1, "Display": "Anonymous"}
+    curweek = datetime.datetime.now().isocalendar()[1]
     token = request.cookies.get("token")
 
     links = [
         "login - Logga in",
         "register - Registrera nytt konto",
-        f"week/{week} - Matsedel för vecka {week}",
+        f"week/{curweek} - Matsedel för vecka {curweek}",
         f"year/{year} - Matsedel för år {year}",
     ]
-    if token:
-        info = await db.get_info_by_token(token)
-        if not info:
-            return redirect(url_for("main.logout"))
 
-        username, permission, display = info
-        userdict = {"Username": username, "PermissionLevel": permission}
+    i = await db.id_by_token(str(token))
+    if await hasperms(token, 2):
+        userdict = await db.get_all_users()
+    elif i is None:
+        userdict = [{"name": "null", "auth": -1, "id": -1, "display": "Null"}]
+    elif token is not None:
+        userdict = [await db.user_by_id(int(i))]
+        i = 0
+    else:
+        userdict = []
 
-        if permission >= 2:
-            userdict["Hantera"] = await db.get_all_users(baseurl)
-        else:
-            userdict["Hantera"] = await db.get_self(baseurl, username)
-        links.insert(
-            1,
-            "logout - Logga ut",
-        )
-        links.append(f"mgr/edtdsp/{userdict['Username']} - Byt namn")
-
-    if userdict["Username"] != "Anonymous":
-        links.append(f"mgr/edtpwd/{userdict['Username']} - Ändra lösenord")
-    if userdict["PermissionLevel"] >= 1:
+    if token and (i is not None):
+        links.append(f"mgr/edtpwd/{i} - Ändra lösenord")
+        links.insert(1, "logout - Logga ut")
+        links.append(f"mgr/edtdsp/{i} - Byt namn")
+    if await hasperms(token, 1):
         links.append(f"mgr/food/import - Importera matsedel från JSON")
 
     comlen = []
-    for week in range(0, 53):  # Weeks 1–52
+    for week in range(1, 53):  # ISO weeks are 1–52 (or 53)
         week_counts = []
-        for day in range(5):  # 0–4, Mon–Fri
+        for day in range(5):  # Mon–Fri
             comments = await db.getcomments(year, week, day)
             week_counts.append(len(comments))
         comlen.append(week_counts)
 
     return render_template(
         "year.html",
+        year=year,
         weekday=weekdays,
         schema=await db.get_food_year(year),
         links=links,
-        year=year,
-        baseurl=baseurl,
         userdict=userdict,
-        configdict=userdict.get("Hantera", {}),
+        loginid=i if i is not None else -1,
+        baseurl=baseurl,
         str=str,
         list=list,
         datetime=datetime.datetime,
         comlen=comlen,
+        usercount=range(len(userdict)),
     )
+
+
+def errorpage(code: int, message: str):
+    return render_template("error.html", code=code, message=message), int(code)
+
+
+def correct_loginname(username: str):
+    return re.sub(r"[^a-z0-9_]", "", username.lower())
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -216,12 +221,13 @@ async def login():
             resp.set_cookie(
                 "token",
                 await db.signin(
-                    request.form["username"].lower(), request.form["password"]
+                    correct_loginname(request.form["username"]),
+                    request.form["password"],
                 ),
             )
             return resp
         except Exception as e:
-            return {"Failed to Log In": str(e)}
+            return errorpage(403, "Forbidden: Invalid Credentials")
     return render_template("login.html")
 
 
@@ -246,94 +252,106 @@ async def register():
             resp.set_cookie(
                 "token",
                 await db.signin(
-                    request.form["username"].lower(), request.form["password"]
+                    correct_loginname(request.form["username"]),
+                    request.form["password"],
                 ),
             )  # log in after registering
             return resp
         except Exception as e:
-            return {"Failed to Log In": str(e)}
+            return errorpage(403, "Forbidden: Invalid Credentials")
     return render_template("register.html")
 
 
-@app.route("/mgr/tokrev/<user>")
-async def revoke_token(user):
+@app.route("/mgr/tokrev/<int:id>")
+async def revoke_token(id):
     token = request.cookies.get("token", None)
     if token is None:
-        return {"Status": "Failed.", "Reason": "Not logged in."}
-    info = await db.get_info_by_token(token)
-    if await hasperms(token, 2) or info[0] == user:
-        tinfo = await db.get_info_by_name(user)
-        minfo = await db.get_info_by_token(token)
-        if minfo is None:
-            return {"Status": "Failed.", "Reason": "Your account does not exist."}
-        if tinfo[2] >= minfo[1] and minfo[1] == 2:
-            return {
-                "Failed to revoke token": f"Target ({user}) is too authorized for you."
-            }
-        await db.tokenrevoke(tinfo[1])
-        return redirect(url_for("main.root"))
-    return {"Status": "Failed.", "Reason": "Invalid Permission"}
+        return errorpage(401, "Ej Inloggad")
+    mid = await db.id_by_token(token)  # my id
+    if mid is None:
+        return errorpage(403, "Invalid inloggning")
+    if await hasperms(token, 2) or mid == id:
+        await db.tokenrevoke(token)
+    return redirect(url_for("main.root"))
 
 
-@app.route("/mgr/accdel/<user>")
-async def delete_account(user):
+@app.route("/mgr/accdel/<int:id>")
+async def delete_account(id):
+    if id == 0:
+        return errorpage(403, "Admin is protected!")
     token = request.cookies.get("token", None)
     if token is None:
-        return {"Status": "Failed.", "Reason": "Not logged in."}
-    info = await db.get_info_by_token(token)
-    if await hasperms(token, 2) or info[0] == user:
-        await db.delete_account(user)
+        return errorpage(403, "Unauthorized")
+    info = await db.id_by_token(token)
+    if await hasperms(token, 2) or info == id:
+        await db.delete_account(id)
         return redirect(url_for("main.root"))
     return {"Status": "Failed.", "Reason": "Unauthorized."}
 
 
-@app.route("/mgr/edtdsp/<user>", methods=["GET", "POST"])
-async def edit_display_name(user):
+@app.route("/mgr/edtdsp/<id>", methods=["GET", "POST"])
+async def edit_display_name(id):
     if request.method == "POST":
         try:
             token = request.cookies.get("token", None)
             if token is None:
-                raise Exception("Unauthorized")
-            info = await db.get_info_by_token(token)
-            if await hasperms(token, 2) or info[0] == user:
-                await db.changedisplay(user, request.form.get("display"))
+                raise errorpage(401, "Unauthorized")
+            info = await db.user_by_token(token)
+            if await hasperms(token, 2) or info["id"] == id:
+                await db.changedisplay(id, request.form.get("display"))
 
             return redirect(url_for("main.root"))
         except Exception as e:
-            return {"Status": "Failed.", "Reason": str(e)}
-    return render_template("changedisplay.html")
+            return {500, "Possible Internal Server Error"}
+    return render_template("changedisplay.html", id=id)
 
 
-@app.route("/mgr/edtprm/<string:user>/<int:permlevel>")
-async def edit_permission(user, permlevel):
+@app.route("/mgr/edtlgn/<id>", methods=["POST"])
+async def edit_login(id):
+    try:
+        token = request.cookies.get("token", None)
+        if token is None:
+            raise Exception("Unauthorized")
+        info = await db.user_by_token(token)
+        if await hasperms(token, 2) or info["id"] == id:
+            await db.editlogin(id, request.form.get("display"))
+
+        return redirect(url_for("main.root"))
+    except Exception as e:
+        return {"Status": "Failed.", "Reason": str(e)}
+
+
+@app.route("/mgr/edtprm/<int:id>/<int:permlevel>")
+async def edit_permission(id: int, permlevel: int):
     token = request.cookies.get("token", None)
     if token is None:
-        return {"Status": "Failed.", "Reason": "Not logged in."}
-    permission = await db.get_info_by_token(token)
-    if permission is None:
-        return {"Status": "Failed.", "Reason": "Invalid Account."}
-    permission = permission[1]
+        return errorpage(401, "Not logged in")
+    mid = await db.id_by_token(token)
+    if mid is None:
+        return errorpage(401, "Invalid Token")
+    info = await db.user_by_id(mid)
+    permission = info["auth"]
     if permission >= int(db.AuthLevels.Moderator.value):
         if permlevel >= permission:
-            return {
-                "Status": "Failed.",
-                "Reason": "Can't assign higher or equal permission level.",
-            }
-        await db.edit_permission(user, permlevel)
+            return errorpage(
+                403,
+                "Can't assign higher or equal permission level.",
+            )
+        await db.edit_permission(id, permlevel)
         return redirect(url_for("main.root"))
-    return {"Status": "Failed.", "Reason": "Invalid permissions."}
+    return errorpage(403, "Invalid Permissions")
 
 
-@app.route("/mgr/edtpwd/<string:user>", methods=["GET", "POST"])
-async def edit_password(user):
+@app.route("/mgr/edtpwd/<int:id>", methods=["GET", "POST"])
+async def edit_password(id):
     if request.method == "POST":
         try:
             await db.change_password(
-                user, request.form["oldpassword"], request.form["newpassword"]
+                id, request.form["oldpassword"], request.form["newpassword"]
             )
             return redirect(url_for("main.root"))
         except Exception as e:
-            return {"Status": "Failed.", "Reason": str(e)}
+            return errorpage(400, str(e))
     return render_template("changepassword.html")
 
 
@@ -404,7 +422,9 @@ async def importfoodjson():
 @app.route("/comments/day/<int:year>/<int:week>/<int:weekday>")
 async def comments(year, week, weekday):
     commlist = await db.getcomments(year, week, weekday)
-    hasperm = await hasperms(request.cookies.get("token"), 0)
+    token = request.cookies.get("token")
+    hasperm = await hasperms(token, 0)
+    ismod = await hasperms(token, 2)
     session["back"] = request.url
     return render_template(
         "comments.html",
@@ -416,6 +436,7 @@ async def comments(year, week, weekday):
         weekday=weekday,
         comments=commlist,
         hasperm=hasperm,
+        ismod=ismod,
     )
 
 
@@ -428,34 +449,32 @@ async def allcomments():
 @app.route("/comments/add/<int:year>/<int:week>/<int:weekday>", methods=["POST"])
 async def addcomment(year, week, weekday):
     if request.method == "POST":
-        try:
-            token = request.cookies.get("token")
-            if not token:
-                raise Exception("Unauthorized")
-            info = await db.get_info_by_token(token)
-            if info is None:
-                raise Exception("Unauthorized")
-            value = str(request.form.get("value", "")).strip()
-            if not value:
-                raise Exception("Invalid comment")
-            await db.addcomment(year, week, weekday, info[0], value, info[2])
-            return redirect(
-                url_for("main.comments", year=year, week=week, weekday=weekday)
-            )
-        except Exception as e:
-            return {"error": f"Failed to add comment: {str(e)}"}, 500
+        token = request.cookies.get("token")
+        if not token:
+            return errorpage(401, "Not logged in")
+        info = await db.user_by_token(token)
+        if info is None:
+            return errorpage(403, "Unauthorized")
+        value = str(request.form.get("value", "")).strip()
+        if not value:
+            return errorpage(400, "No comment")
+        await db.addcomment(year, week, weekday, value, info["id"])
+        return redirect(url_for("main.comments", year=year, week=week, weekday=weekday))
 
 
 @app.route("/comments/del/<int:id>")
 async def delcomment(id):
-    try:
-        token = request.cookies.get("token")
-        info = await db.get_info_by_token(token)
-        if (not token) or (not token):
-            raise Exception("Unauthorized")
-        user = await db.get_author_by_comment_id(id)
-        if await hasperms(token, 2) or info[0] == user:
-            await db.delcomment(id)
-            return redirect(url_for("main.root"))
-    except Exception as e:
-        return {"Failed": str(e)}
+    token = request.cookies.get("token")
+    info = await db.user_by_token(token)
+    if not token:
+        return errorpage(401, "Unauthorized")
+    user = (await db.get_author_by_comment_id(id)).split(":")[0]
+    comment = await db.comment_by_id(id)
+    if comment["comment"] == "<Deleted>":
+        fr = True
+    else:
+        fr = False
+    print(fr)
+    if await hasperms(token, 2) or info["name"] == user:
+        await db.delcomment(id, fr)
+        return redirect(url_for("main.root"))

@@ -1,13 +1,13 @@
 {% extends 'modal.html' %}
-{% block title %}Login{% endblock %}
-
-{% block modal_body %}
+{% block title %}Registrera Dig{% endblock %}
+{%
+block modal_body %}
 <h2>Register</h2>
-
 <form method="post">
-	<input type=text name=username placeholder="Användarnamn"><br>
-	<input type=password name=password placeholder="Lösenord"><br>
-	<input type=submit value=Registrera>
+    <input type="text" name="username" placeholder="Användarnamn" />
+    <br />
+    <input type="password" name="password" placeholder="Lösenord" />
+    <br />
+    <input type="submit" value="Registrera" />
 </form>
-
 {% endblock %}

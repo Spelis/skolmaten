@@ -1,94 +1,52 @@
 {% extends "base.html" %}
-
 {% block content %}
-<script>
-function togglePassword(el) {
-  const input = el.closest("li").querySelector("span.userpassword");
-  if (input.classList.contains("hidepass")) {
-    el.textContent = "󰈈 "; // open eye
-    input.classList.remove("hidepass");
-  } else {
-    el.textContent = "󰈉 "; // closed eye
-    input.classList.toggle("hidepass");
+    <script>
+  function togglePassword(el) {
+    const input = el.closest("li").querySelector("span.userpassword");
+    if (input.classList.contains("hidepass")) {
+      el.textContent = "󰈈 "; // open eye
+      input.classList.remove("hidepass");
+    } else {
+      el.textContent = "󰈉 "; // closed eye
+      input.classList.toggle("hidepass");
+    }
   }
-}
-</script>
-
-
-<div class="contbox" style="position:relative;">
-  <div style="display: flex; align-items: center; justify-content: space-between">
-    <a href="{{ baseurl+"year/"+str(year-1) }}" class="weeknavb"></a>
-    <h2 style="margin-top:1em;">󰃭 {% block title %}År {{ year }}{% endblock %}:</h2>
-    <a href="{{ baseurl+"year/"+str(year+1) }}" class="weeknavb"></a>
-  </div>
-  <hr>
-  {% for weekdata in schema %}
-    <h3>Vecka {{ weekdata.week }} ({{ weekdata.date.strftime("%d %b") }})</h3>
-    {% for day in weekdata.days %}
-    <p class="truncatecont">{{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() + (day.day-1)*86400).strftime("%d %b") }}: <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
-        <span class="weekplancontrol" style="float:right;">
-		<a href="{{ url_for("main.comments",year=year,week=weekdata.week,weekday=day.day-1) }}">󰅺 </a><sup>{{ comlen[weekdata.week][day.day-1] }}</sup>
-      {% if userdict.PermissionLevel >= 2 %}
-          <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/set"> </a>
-          <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/del"> </a>
-      {% endif %}
-        </span>
-    </p>
-    {% endfor %}
-  {% endfor %}
-</div>
-
-<div class="contbox">
-  <h2> Länkar</h2>
-  <hr>
-  {% for i in links %}
-    <p><a href="{{ baseurl+i.split("-")[0].strip() }}">{{ i.split("-")[1].strip() }}  </a></p>
-  {% endfor %}
-</div>
-
-<div class="contbox">
-  <h2> Inställningar och hantering</h2>
-  <hr>
-  {% for username in configdict.keys() %}
-    <details style="margin-bottom: 5px">
-      <summary>
-        {% if username == userdict["Username"] %}
-        <span title="Du är inloggad som {{ username }}"> </span>
-        {% endif %}
-	{{ username }} ({{ configdict[username]["display"] }})
-        <span class="weekplancontrol" style="float:right;">
-          <a href="{{ configdict[username]["delete_account"] }}"> </a>
-          <a href="{{ configdict[username]["revoke_token"] }}">󰌊</a>
-        </span>
-      </summary>
-      <ul style="margin:0;margin-top:5px;">
-        <li style="margin-bottom: 5px;" class="truncatecont">
-          <strong>Password:</strong>
-	  <span class="userpassword hidepass truncate">{{ configdict[username]["pass"] }}</span>
-          <span class="weekplancontrol" style="float:right;">
-            <a href="{{ configdict[username]["change_password"] }}"> </a>
-            <a href="javascript:void(0);" onclick="togglePassword(this)">󰈉 </a>
-          </span>
-        </li>
-        <li class="truncatecont"><strong>Permissions:</strong>
-		<span class="truncate">
-          {{ list(configdict[username]["auth"].values())[0] }}
-		</span>
-          {% if userdict["PermissionLevel"] >= 2 %}
-          <span class="weekplancontrol" style="float:right;">
-            <a href="{{ configdict[username]["change_permission"]["User"] }}"> </a>
-            <a href="{{ configdict[username]["change_permission"]["FoodEditor"] }}">󰭼 </a>
-            <a href="{{ configdict[username]["change_permission"]["Moderator"] }}"> </a>
-            <a href="{{ configdict[username]["change_permission"]["Admin"] }}"> </a>
-          </span>
-          {% endif %}
-        </li>
-      </ul>
-    </details>
-  {% endfor %}
-  {% if configdict.keys().__len__() == 0 %}
-    Ej inloggad.
-  {% endif %}
-</div>
-
+    </script>
+    <div class="contbox">
+        <div style="position: sticky;
+                    top: 0;
+                    padding-top:32px;
+                    background-color: var(--bg-dark)">
+            <div style="display: flex;
+                        align-items: center;
+                        justify-content: space-between">
+                <a href="{{ baseurl+'year/'+str(year-1) }}" class="weeknavb"></a>
+                <h2 style="margin-top:1em;">
+                    󰃭
+                    {% block title %}År {{ year }}{% endblock %}
+                </h2>
+                <a href="{{ baseurl+'year/'+str(year+1) }}" class="weeknavb"></a>
+            </div>
+            <hr>
+        </div>
+        {% for weekdata in schema %}
+            <h3>
+                Vecka {{ weekdata.week }} <span style="color: #9399b2;font-size:0.8rem;">({{ weekdata.date.year }})</span>
+            </h3>
+            {% for day in weekdata.days %}
+                <p class="truncatecont">
+                    {{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() + (day.day-1)*86400).strftime('%d %b') }}: <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
+                    <span class="weekplancontrol" style="float:right;">
+                        <a href="{{ url_for("main.comments",year=year,week=weekdata.week,weekday=day.day-1) }}">󰅺</a><sup>{{ comlen[weekdata.week-1][day.day-1] if weekdata.week-1 < comlen|length and day.day-1 < comlen[weekdata.week-1]|length else '' }}</sup>
+                        {% if userdict[loginid]['auth'] >= 2 %}
+                            <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/set"></a>
+                            <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/del"></a>
+                        {% endif %}
+                    </span>
+                </p>
+            {% endfor %}
+        {% endfor %}
+    </div>
+    {% import 'controls.html' as controls %}
+    {{ controls.dashboard(links,baseurl,userdict,loginid) }}
 {% endblock %}

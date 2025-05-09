@@ -1,12 +1,10 @@
 {% extends 'modal.html' %}
-{% block title %}Login{% endblock %}
-
-{% block modal_body %}
-<h2>Kommentera {{ timestr }}:</h2>
-
-<form method="post">
-	<input type=text name=value placeholder="Kommentar">
-	<input type=submit value="">
-</form>
-
+{% block title %}Kommentera{% endblock %}
+{% block
+    modal_body %}
+    <h2>Kommentera {{ timestr }}:</h2>
+    <form method="post">
+        <input type="text" name="value" placeholder="Kommentar" />
+        <input type="submit" value="" />
+    </form>
 {% endblock %}

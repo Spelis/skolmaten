@@ -2,15 +2,19 @@ import asyncio
 import datetime
 import uuid
 from enum import Enum
-from sqlite3 import connect
 
 import aiosqlite
 from jose.jwt import decode, encode
+from passlib.context import CryptContext
 
 secret = uuid.uuid4().hex
 
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
 class AuthLevels(Enum):
+    Null = -1
     User = 0
     FoodEditor = 1
     Moderator = 2
@@ -18,6 +22,23 @@ class AuthLevels(Enum):
 
 
 weekdays = ["mon", "tue", "wed", "thu", "fri"]
+
+
+def hash_password(password: str) -> str:
+    """Hash a password with a salt."""
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+async def get_next_user_id():
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute("SELECT MAX(id) FROM users") as cursor:
+            row = await cursor.fetchone()
+            return (row[0] or 0) + 1
 
 
 def generate_jwt_token(name: str) -> str:
@@ -34,10 +55,12 @@ async def create_schema():
             """
             CREATE TABLE IF NOT EXISTS users (
                 token TEXT,
-                name TEXT PRIMARY KEY UNIQUE,
+                id INT PRIMARY KEY UNIQUE,
+                name TEXT UNIQUE NOT NULL,
                 pass TEXT NOT NULL,
                 authlvl INTEGER DEFAULT 0,
-                display TEXT
+                display TEXT,
+                deleted INT DEFAULT 0
             );
         """
         )
@@ -62,15 +85,14 @@ async def create_schema():
                 day INT,
                 id INT PRIMARY KEY,
                 value TEXT,
-                author TEXT,
-                username TEXT
+                author INT
                 );
         """
         )
         await db.commit()
 
         async with db.execute(
-            "SELECT 1 FROM users WHERE name = ?", ("adminacc",)
+            "SELECT 1 FROM users WHERE id = ? AND authlvl = ?", (0, 3)
         ) as cursor:
             exists = await cursor.fetchone()
 
@@ -81,16 +103,16 @@ async def create_schema():
 async def signin(username: str, passwd: str):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT * FROM users WHERE name = ?", (username,)
+            "SELECT name, pass FROM users WHERE name = ?", (username,)
         ) as cursor:
             user = await cursor.fetchone()
 
-        if user is None or passwd != user[2]:
+        if user is None or not verify_password(passwd, user[1]):
             raise Exception("Invalid credentials")
 
         tok = generate_jwt_token(user[1])
 
-        await db.execute("UPDATE users SET token = ? WHERE name = ?;", (tok, user[1]))
+        await db.execute("UPDATE users SET token = ? WHERE name = ?;", (tok, user[0]))
         await db.commit()
 
         return tok
@@ -107,76 +129,88 @@ async def register(username: str, passwd: str, authlvl):
             raise Exception("User already exists")
 
         await db.execute(
-            "INSERT INTO users (token, name, pass, authlvl,display) VALUES (?, ?, ?, ?,?)",
-            (generate_jwt_token(username), username.lower(), passwd, authlvl, username),
+            "INSERT INTO users (token, name, pass, authlvl, display, id) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "",
+                username.lower(),
+                hash_password(passwd),
+                authlvl,
+                username,
+                await get_next_user_id(),
+            ),
         )
         await db.commit()
 
 
-async def get_info_by_token(token):
+async def id_by_token(token: str) -> int | None:
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT name,authlvl,display FROM users WHERE token = ?", (token,)
+            "SELECT id FROM users WHERE token = ?", (token,)
         ) as cursor:
             row = await cursor.fetchone()
-            return (row[0], row[1], row[2]) if row else None
+            return int(row[0]) if row is not None else None
 
 
-async def get_all_users(baseurl: str):
+async def get_all_users():
     async with aiosqlite.connect("database.db") as db:
-        async with db.execute("SELECT * FROM users") as cursor:
+        async with db.execute(
+            "SELECT id,name,display,authlvl,deleted FROM users"
+        ) as cursor:
             rows = await cursor.fetchall()
-            r = {}
+            r = []
             for row in rows:
-                r[row[1]] = {
-                    "token": row[0],
-                    "name": row[1],
-                    "display": row[4],
-                    "pass": row[2],
-                    "auth": {row[3]: AuthLevels(row[3]).name},
-                    "revoke_token": baseurl + f"mgr/tokrev/{row[1]}",
-                    "delete_account": baseurl + f"mgr/accdel/{row[1]}",
-                    "change_password": baseurl + f"mgr/edtpwd/{row[1]}",
-                    "change_permission": {
-                        AuthLevels(i).name: baseurl + f"mgr/edtprm/{row[1]}/{i}"
-                        for i in range(4)
-                    },
-                }
+                r.append(
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "display": row[2],
+                        "auth": row[3],
+                        "authstr": AuthLevels(row[3]).name,
+                        "deleted": bool(row[4]),
+                    }
+                )
 
             return r
 
 
-async def get_self(baseurl: str, name: str):
+async def user_by_token(t: str):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT pass,name,authlvl,display FROM users WHERE name = ?", (name,)
+            "SELECT id,name,display,authlvl,deleted FROM users WHERE token = ?", (t,)
         ) as cursor:
-            rows = await cursor.fetchall()
-            r = {}
-            for row in rows:
-                r[row[1]] = {
-                    "name": row[1],
-                    "pass": row[0],
-                    "display": row[3],
-                    "auth": {row[2]: AuthLevels(row[2]).name},
-                    "revoke_token": baseurl + f"mgr/tokrev/{row[1]}",
-                    "delete_account": baseurl + f"mgr/accdel/{row[1]}",
-                    "change_password": baseurl + f"mgr/edtpwd/{row[1]}",
-                    "change_permission": {
-                        AuthLevels(i).name: baseurl + f"mgr/edtprm/{row[1]}/{i}"
-                        for i in range(4)
-                    },
-                }
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            r = {
+                "id": row[0],
+                "name": row[1],
+                "display": row[2],
+                "auth": row[3],
+                "authstr": AuthLevels(row[3]).name,
+                "deleted": bool(row[4]),
+            }
 
             return r
 
 
-async def get_info_by_name(name):
+async def user_by_id(i: int):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT pass,token,authlvl FROM users WHERE name = ?", (name,)
+            "SELECT id,name,display,authlvl,deleted FROM users WHERE id = ?", (i,)
         ) as cursor:
-            return await cursor.fetchone()
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            r = {
+                "id": row[0],
+                "name": row[1],
+                "display": row[2],
+                "auth": row[3],
+                "authstr": AuthLevels(row[3]).name,
+                "deleted": bool(row[4]),
+            }
+
+            return r
 
 
 async def tokenrevoke(token):
@@ -240,40 +274,43 @@ async def get_food_year(year):
     return result
 
 
-async def delete_account(name):
-    if name == "adminacc":
+async def delete_account(id):
+    if id == 0:
         raise Exception("The Admin Account is protected!")
     async with aiosqlite.connect("database.db") as db:
-        await db.execute("DELETE FROM users WHERE name = ?", (name,))
+        await db.execute(
+            "UPDATE users SET (token,name,pass,display,authlvl,deleted) = (?,?,?,?,?,?) WHERE id = ?",
+            ("", f"deleted_user{id}", "deletedaccount", "Deleted User", -1, 1, id),
+        )
         await db.commit()
 
 
-async def edit_permission(name, perm):
-    if name == "adminacc":
+async def edit_permission(id, perm):
+    if id == 0:
         raise Exception("The Admin Account is protected!")
     async with aiosqlite.connect("database.db") as db:
-        await db.execute("UPDATE users SET authlvl = ? WHERE name = ?", (perm, name))
+        await db.execute("UPDATE users SET authlvl = ? WHERE id = ?", (perm, id))
         await db.commit()
 
 
-async def change_password(name, old, new):
+async def change_password(id, old, new):
     # the admin account is not protected against password changing.
     async with aiosqlite.connect("database.db") as db:
-        async with db.execute(
-            "SELECT pass FROM users WHERE name = ?", (name,)
-        ) as cursor:
+        async with db.execute("SELECT pass FROM users WHERE id = ?", (id,)) as cursor:
             current = await cursor.fetchone()
 
-        if not current or current[0] != old:
+        if not current or not verify_password(old, current[0]):
             raise Exception("Incorrect current password.")
-        await db.execute("UPDATE users SET pass = ? WHERE name = ?", (new, name))
+        await db.execute(
+            "UPDATE users SET pass = ? WHERE id = ?", (hash_password(new), id)
+        )
         await db.commit()
 
 
 async def getcomments(year, week, weekday):
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT value, id, username FROM comments WHERE year = ? AND week = ? AND day = ?",
+            "SELECT value, id, author FROM comments WHERE year = ? AND week = ? AND day = ?",
             (year, week, weekday),
         ) as cursor:
             selection = await cursor.fetchall()
@@ -282,33 +319,47 @@ async def getcomments(year, week, weekday):
         for row in selection:
             r.append(
                 {
-                    "name": (await get_self("/", row[2]))[row[2]]["display"],
+                    "name": (await user_by_id(row[2]))["display"],
                     "comment": row[0],
                     "id": row[1],
-                    "author": row[2],
+                    "author": await get_author_by_comment_id(row[1]),
                 }
             )
         return r
 
 
-async def addcomment(year, week, weekday, author, value, display):
+async def addcomment(year, week, weekday, value, authorid):
     async with aiosqlite.connect("database.db") as db:
         await db.execute(
-            "INSERT INTO comments ( year, week, day, author, value, id, username ) VALUES ( ?, ?, ?, ?, ?, ?, ? )",
-            (year, week, weekday, display, value, await numcomments(), author),
+            "INSERT INTO comments ( year, week, day, author, value, id ) VALUES ( ?, ?, ?, ?, ?, ? )",
+            (year, week, weekday, authorid, value, await numcomments()),
         )
         await db.commit()
 
 
 async def numcomments():
     async with aiosqlite.connect("database.db") as db:
-        async with db.execute("SELECT id FROM comments") as cursor:
+        async with db.execute("SELECT COUNT(*) FROM comments") as cursor:
             return len(list(await cursor.fetchall()))
 
 
-async def changedisplay(user, new):
+async def changedisplay(id, new):
     async with aiosqlite.connect("database.db") as db:
-        await db.execute("UPDATE users SET display = ? WHERE name = ?", (new, user))
+        await db.execute("UPDATE users SET display = ? WHERE id = ?", (new, id))
+        await db.commit()
+
+
+async def editlogin(id, new):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+            "SELECT 1 FROM users WHERE name = ? AND id != ?", (new, id)
+        ) as cursor:
+            exists = await cursor.fetchone()
+
+        if exists:
+            raise Exception("Username already taken")
+
+        await db.execute("UPDATE users SET name = ? WHERE id = ?", (new, id))
         await db.commit()
 
 
@@ -317,25 +368,30 @@ async def get_author_by_comment_id(id: int):
         async with db.execute(
             "SELECT author FROM comments WHERE id = ?", (id,)
         ) as cursor:
-            return (await cursor.fetchone())[0]
+            id = (await cursor.fetchone())[0]
+            info = await user_by_id(id)
+            return f"{info['name']}#{id}"
 
 
-async def delcomment(id):
+async def delcomment(id, fr=False):
     async with aiosqlite.connect("database.db") as db:
-        await db.execute(
-            "UPDATE comments SET value = ? WHERE id = ?",
-            (
-                "<Deleted>",
-                id,
-            ),
-        )
+        if not fr:
+            await db.execute(
+                "UPDATE comments SET value = ? WHERE id = ?",
+                (
+                    "<Deleted>",
+                    id,
+                ),
+            )
+        else:
+            await db.execute("DELETE FROM comments WHERE id = ?", (id,))
         await db.commit()
 
 
 async def getallcomments():
     async with aiosqlite.connect("database.db") as db:
         async with db.execute(
-            "SELECT value, id, username,year,week,day FROM comments",
+            "SELECT value, id, author,year,week,day FROM comments",
         ) as cursor:
             selection = await cursor.fetchall()
 
@@ -349,10 +405,10 @@ async def getallcomments():
                 )
                 + str(row[1])
             ] = {
-                "name": (await get_self("/", row[2]))[row[2]]["display"],
+                "name": (await user_by_id(row[2]))["display"],
                 "comment": row[0],
                 "id": row[1],
-                "author": row[2],
+                "author": f"{(await user_by_id(row[2]))['name']}#{row[2]}",
                 "date": [
                     datetime.datetime.fromisocalendar(row[3], row[4], row[5] + 1),
                     row[3],
@@ -361,6 +417,22 @@ async def getallcomments():
                 ],
             }
         return r
+
+
+async def comment_by_id(id: int):
+    async with aiosqlite.connect("database.db") as db:
+        async with db.execute(
+            "SELECT value, id, author FROM comments WHERE id = ?",
+            (id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+
+            return {
+                "name": (await user_by_id(row[2]))["display"],
+                "comment": row[0],
+                "id": row[1],
+                "author": await get_author_by_comment_id(row[1]),
+            }
 
 
 def init_app():

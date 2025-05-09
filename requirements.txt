@@ -7,3 +7,6 @@ dotenv
 PyPDF2
 # for deployment
 gunicorn
+# for passwords
+passlib
+bcrypt

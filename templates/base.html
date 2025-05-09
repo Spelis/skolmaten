@@ -1,42 +1,56 @@
 <!DOCTYPE html>
 <head>
-	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7562690585426691"
-     crossorigin="anonymous"></script>
+    <script async
+            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7562690585426691"
+            crossorigin="anonymous"></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PCBBH893X9"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-PCBBH893X9"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-PCBBH893X9');
-</script>
-
-<title>{% block title %}{% endblock %} - Skolmaten</title>
-<link href="{{ url_for('static', filename='style.css' )}}" rel="stylesheet">
-<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
+    gtag("config", "G-PCBBH893X9");
+    </script>
+    <title>
+        {% block title %}{% endblock %}
+    - Skolmaten</title>
+    <link href="{{ url_for('static', filename='style.css') }}"
+          rel="stylesheet" />
+    <link rel="shortcut icon"
+          href="{{ url_for('static', filename='favicon.png') }}" />
 </head>
 <script>
   const applyTheme = () => {
-    const theme = localStorage.getItem("theme") || "dark"
-    document.body.classList.toggle("light", theme === "light")
-  }
+    const theme = localStorage.getItem("theme") || "dark";
+    document.body.classList.toggle("light", theme === "light");
+  };
 
   const toggleTheme = () => {
-    const isLight = document.body.classList.toggle("light")
-    localStorage.setItem("theme", isLight ? "light" : "dark")
-  }
+    const isLight = document.body.classList.toggle("light");
+    localStorage.setItem("theme", isLight ? "light" : "dark");
+  };
 
-  window.addEventListener("DOMContentLoaded", applyTheme)
+  window.addEventListener("DOMContentLoaded", applyTheme);
 </script>
 <nav>
-	<h1 style="display:inline-block"><a href="{{ url_for('main.root') }}">󰉚 Skolmaten</a><span class='vl'>|</span><h2 style="display:inline-block"><a href="https://www.paypal.com/donate/?hosted_button_id=39UGGPZVFTLJQ"> Donera</a></h2></h1><a href="javascript:void(0);" onclick="toggleTheme()" style="float: right; text-decoration:none;">🌓</a>
+    <h1 style="display: inline-block">
+        <a href="{{ url_for("main.root") }}">󰉚 Skolmaten</a><span class="vl">|</span>
+        <h2 style="display: inline-block">
+            <a href="https://www.paypal.com/donate/?hosted_button_id=39UGGPZVFTLJQ"> Donera</a>
+        </h2>
+    </h1>
+    <a href="javascript:void(0);"
+       onclick="toggleTheme()"
+       style="float: right;
+              text-decoration: none">🌓</a>
 </nav>
 <center class="parent">
-	{% block content %}
-	{% endblock %}
+    {% block content %}{% endblock %}
 </center>
 <footer>
-	Made with 󰋑 by <a href="https://spelis.r.mrharryw.dev/">Spelis</a> | <a href="https://github.com/spelis/skolmaten">src</a>
+    Made with 󰋑 by <a href="https://spelis.r.mrharryw.dev/">Spelis</a> |
+    <a href="https://github.com/spelis/skolmaten">src</a>
 </footer>

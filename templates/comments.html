@@ -1,21 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}Comments{% endblock %}
-
 {% block content %}
-<div id="modal" class="modal">
-  <div class="modal-content" style="overflow: scroll; max-height:80vh;">
-	  <h2 style="display:inline-block">Kommentarer {{ timestr }}:</h2> 
-	{% if hasperm %}
-	<form action="{{ url_for("main.addcomment",year=year,week=week,weekday=weekday) }}" method="post">
-		<input type=text name=value placeholder="Lägg till kommentar">
-		<input type=submit value="">
-		</form>
-	  {% endif %}
-	  <div style="text-align: left;">
-	  {% for comment in comments %}
-	  <p title="ID: {{ comment['id'] }}, Author: {{ comment['author'] }}">{{ comment['name'] }}: <span style="color: var(--subtext)">{{ comment['comment'] }}</span><span class="weekplancontrol" style="float:right"><a href="{{ url_for("main.delcomment",year=year,week=week,weekday=weekday,id=comment['id']) }}" target="_blank">󰆴</a></span></p>
-	  {% endfor %}
-	  </div>
-  </div>
+    <div id="modal" class="modal">
+        <div class="modal-content" style="overflow: scroll; max-height:80vh;">
+            <h2 style="display:inline-block">Kommentarer {{ timestr }}:</h2>
+            {% if hasperm %}
+                <form action="{{ url_for("main.addcomment",year=year,week=week,weekday=weekday) }}"
+                      method="post">
+                    <input type=text name=value placeholder="Lägg till kommentar">
+                    <input type=submit value="">
+                </form>
+            {% endif %}
+            <div style="text-align: left;">
+                {% for comment in comments %}
+                    <p title="ID: {{ comment['id'] }}, Author: {{ comment['author'] }}">
+                        {{ comment['name'] }}: <span style="color: var(--subtext)">{{ comment['comment'] }}</span><span class="weekplancontrol" style="float:right">
+                        {% if ismod %}
+                            <a href="{{ url_for("main.delcomment",id=comment['id']|int) }}"
+                               onclick="fetch(this.href).then(() => location.reload()); return false;"></a>
+                        {% endif %}
+                    </span>
+                </p>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 {% endblock %}

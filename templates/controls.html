@@ -1,0 +1,56 @@
+{% macro dashboard(links, baseurl, userdict,loginid) %}
+    <div class="contbox">
+        <div style="position: sticky;
+                    top: 0;
+                    padding-top:32px;
+                    background-color: var(--bg-dark)">
+            <h2> Länkar</h2>
+            <hr />
+        </div>
+        {% for i in links %}
+            <p>
+                <a href="{{ baseurl+i.split("-")[0] .strip() }}">{{ i.split("-")[1] .strip() }} </a>
+            </p>
+        {% endfor %}
+    </div>
+    <div class="contbox">
+        <div style="position: sticky;
+                    top: 0;
+                    padding-top:32px;
+                    background-color: var(--bg-dark)">
+            <h2> Inställningar och hantering</h2>
+            <hr />
+        </div>
+        {% for user in userdict %}
+            <details style="margin-bottom: 5px">
+                <summary>
+                    {% if id == loginid %}<span title="Du är inloggad som {{ user['name'] }}"></span>{% endif %}
+                    {{ user['name'] }} ({{ user['display'] }}#{{ user['id'] }})
+                    {% if not user['deleted'] %}
+                        <span class="weekplancontrol" style="float: right">
+                            <a href="{{ url_for('main.delete_account', id=user['id']|int) }}"></a>
+                            <a href="{{ url_for('main.revoke_token', id=user['id']|int) }}">󰌊</a>
+                        </span>
+                    {% endif %}
+                </summary>
+                {% if not user['deleted'] %}
+                    <ul style="margin: 0; margin-top: 5px">
+                        <li class="truncatecont">
+                            <strong>Permissions:</strong>
+                            <span class="truncate">{{ user['authstr'] }}</span>
+                            {% if userdict[loginid]['auth'] >= 2 %}
+                                <span class="weekplancontrol" style="float: right">
+                                    <a href="{{ url_for('main.edit_permission',id=user['id']|int,permlevel=0) }}"></a>
+                                    <a href="{{ url_for('main.edit_permission',id=user['id']|int,permlevel=1) }}">󰭼</a>
+                                    <a href="{{ url_for('main.edit_permission',id=user['id']|int,permlevel=2) }}"></a>
+                                    <a href="{{ url_for('main.edit_permission',id=user['id']|int,permlevel=3) }}"></a>
+                                </span>
+                            {% endif %}
+                        </li>
+                    </ul>
+                {% endif %}
+            </details>
+        {% endfor %}
+        {% if loginid == -1 %}Ej inloggad.{% endif %}
+    </div>
+{% endmacro %}

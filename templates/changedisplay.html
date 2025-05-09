@@ -1,10 +1,16 @@
 {% extends 'modal.html' %}
-{% block title %}Login{% endblock %}
-
-{% block modal_body %}
+{% block title %}Ändra Visningsnamn{% endblock %}
+{%
+block modal_body %}
 <h2>Ändra namn</h2>
-<form method="post">
-	<input type="text" name="display" placeholder="Nytt namn" required><br>
-  <input type="submit" value="Ändra Namn">
+<form id="mainForm" method="post">
+    <input type="text" name="display" placeholder="Nytt namn" required />
+    <br />
+    <input type="submit"
+           formaction="{{ request.path }}"
+           value="Ändra Visningsnamn">
+    <input type="submit"
+           formaction="{{ url_for("main.edit_login",id=id) }}"
+           value="Ändra Login-namn">
 </form>
 {% endblock %}

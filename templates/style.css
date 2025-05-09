@@ -80,6 +80,23 @@ body {
 	border-radius: 8px;
 	max-height: 500px;
 	overflow-y: auto;
+	padding-top: 0;
+}
+
+.comment-link {
+    position: relative;
+    display: inline-block;
+}
+
+.comment-count {
+    position: absolute;
+    top: 2px; /* Adjust as needed to control vertical position */
+    right: 4px; /* Adjust as needed to control horizontal position */
+    font-size: 12px; /* Adjust size as needed */
+    color: var(--text-light); /* Choose the color you prefer */
+}
+body.light .comment-count {
+    color: #cdd6f4; /* Choose the color you prefer */
 }
 
 h1,h2,h3,h4 {
@@ -250,8 +267,11 @@ hr {
 	p, a, input, details {
 		font-size: 32px;
 	}
-	footer a {
-		font-size: 0.9rem;
+	footer {
+		font-size: 2.5rem !important;
+	}
+	body {
+		margin-bottom: 71px;
 	}
 	.weekplancontrol a, .weeknavb {
 		width: 32px;
