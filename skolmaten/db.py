@@ -437,3 +437,7 @@ async def comment_by_id(id: int):
 
 def init_app():
     asyncio.run(create_schema())
+
+
+if __name__ == "__main__":
+    init_app()
