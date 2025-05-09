@@ -15,29 +15,36 @@
     <div class="contbox">
         <div style="position: sticky;
                     top: 0;
-                    padding-top:32px;
+                    padding-top: 32px;
                     background-color: var(--bg-dark)">
             <div style="display: flex;
                         align-items: center;
                         justify-content: space-between">
                 <a href="{{ baseurl+'year/'+str(year-1) }}" class="weeknavb"></a>
-                <h2 style="margin-top:1em;">
+                <h2 style="margin-top: 1em">
                     󰃭
                     {% block title %}År {{ year }}{% endblock %}
                 </h2>
                 <a href="{{ baseurl+'year/'+str(year+1) }}" class="weeknavb"></a>
             </div>
-            <hr>
+            <hr />
         </div>
         {% for weekdata in schema %}
             <h3>
-                Vecka {{ weekdata.week }} <span style="color: #9399b2;font-size:0.8rem;">({{ weekdata.date.year }})</span>
+                Vecka {{ weekdata.week }}
+                <span style="color: #9399b2; font-size: 0.8rem">({{ weekdata.date.year }})</span>
             </h3>
             {% for day in weekdata.days %}
                 <p class="truncatecont">
-                    {{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() + (day.day-1)*86400).strftime('%d %b') }}: <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
-                    <span class="weekplancontrol" style="float:right;">
-                        <a href="{{ url_for("main.comments",year=year,week=weekdata.week,weekday=day.day-1) }}">󰅺</a><sup>{{ comlen[weekdata.week-1][day.day-1] if weekdata.week-1 < comlen|length and day.day-1 < comlen[weekdata.week-1]|length else '' }}</sup>
+                    {{ weekday[day.day - 1].capitalize() }} {{ datetime.fromtimestamp(weekdata.date.timestamp() +
+                    (day.day-1)*86400).strftime('%d %b') }}:
+                    <span class="truncate" title="{{ day.text }}">{{ day.text }}</span>
+                    <span class="weekplancontrol" style="float: right">
+                        <a href="{{ url_for('main.comments', year=year, week=week, weekday=i) }}"
+                           class="comment-link">
+                            󰅺
+                            <sup class="comment-count">{{ comlen[i] }}</sup>
+                        </a>
                         {% if userdict[loginid]['auth'] >= 2 %}
                             <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/set"></a>
                             <a href="{{ baseurl }}mgr/food/{{ year }}/{{ weekdata.week }}/{{ day.day }}/del"></a>
@@ -47,6 +54,5 @@
             {% endfor %}
         {% endfor %}
     </div>
-    {% import 'controls.html' as controls %}
-    {{ controls.dashboard(links,baseurl,userdict,loginid) }}
+    {% import 'controls.html' as controls %} {{ controls.dashboard(links,baseurl,userdict,loginid) }}
 {% endblock %}
