@@ -330,9 +330,10 @@ async def getcomments(year, week, weekday):
 
 async def addcomment(year, week, weekday, value, authorid):
     async with aiosqlite.connect("database.db") as db:
+        ca = await numcomments()
         await db.execute(
             "INSERT INTO comments ( year, week, day, author, value, id ) VALUES ( ?, ?, ?, ?, ?, ? )",
-            (year, week, weekday, authorid, value, await numcomments()),
+            (year, week, weekday, authorid, value, ca),
         )
         await db.commit()
 
@@ -340,7 +341,7 @@ async def addcomment(year, week, weekday, value, authorid):
 async def numcomments():
     async with aiosqlite.connect("database.db") as db:
         async with db.execute("SELECT COUNT(*) FROM comments") as cursor:
-            return len(list(await cursor.fetchall()))
+            return (await cursor.fetchone())[0]
 
 
 async def changedisplay(id, new):

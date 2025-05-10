@@ -1,9 +1,11 @@
 {% extends 'modal.html' %}
-{% block title %}Ändra Matsedel {{ day }}{% endblock %}
-{% block modal_body %}
-    <h2>Ändra Matsedel {{ day }}</h2>
-    <form method="post">
-        <input type="text" name="value" placeholder="Maträtt" />
-        <input type="submit" value="Ok" />
-    </form>
-{% endblock %}
+{% block title %}
+    Ändra Matsedel {{ day }} {%
+    endblock %}
+    {% block modal_body %}
+        <h2>Ändra Matsedel {{ day }}</h2>
+        <form method="post">
+            <input type="text" name="value" placeholder="Maträtt" value="{{ food }}" />
+            <input type="submit" value="Ok" />
+        </form>
+    {% endblock %}

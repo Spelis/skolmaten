@@ -90,13 +90,13 @@ body {
 
 .comment-count {
     position: absolute;
-    top: 2px; /* Adjust as needed to control vertical position */
+    top: 3px; /* Adjust as needed to control vertical position */
     right: 4px; /* Adjust as needed to control horizontal position */
-    font-size: 12px; /* Adjust size as needed */
-    color: var(--text-light); /* Choose the color you prefer */
+    font-size: 10px; /* Adjust size as needed */
+    color: #21786a; /* Choose the color you prefer */
 }
 body.light .comment-count {
-    color: #cdd6f4; /* Choose the color you prefer */
+    color: #afe9df; /* Choose the color you prefer */
 }
 
 h1,h2,h3,h4 {
@@ -243,11 +243,17 @@ hr {
 	opacity: 0.25;
 }
 
+#installButton {
+	display: none;
+}
+
+
 @media (max-width: 1050px) {
 	.contbox {
 		flex: 1 1 100%;
 		width: 100%;
 		padding: 1em;
+		padding-top: 0;
 		margin: 0.5em 0;
 		max-height: 800px;
 	}
@@ -276,5 +282,18 @@ hr {
 	.weekplancontrol a, .weeknavb {
 		width: 32px;
 		height: 36px;
+	}
+	.comment-count {
+	    position: absolute;
+	    top: 6px; /* Adjust as needed to control vertical position */
+	    right: 8px; /* Adjust as needed to control horizontal position */
+	    font-size: 20px; /* Adjust size as needed */
+	    color: #21786a; /* Choose the color you prefer */
+	}
+	body.light .comment-count {
+	    color: #afe9df; /* Choose the color you prefer */
+	}
+	#installButton {
+		display: inline;
 	}
 }

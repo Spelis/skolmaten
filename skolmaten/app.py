@@ -3,9 +3,7 @@ import json
 import os
 import re
 import time
-from functools import wraps
 
-from dotenv import load_dotenv
 from flask import (
     Blueprint,
     Response,
@@ -28,6 +26,17 @@ time.tzset()
 weekdays = ["mån", "tis", "ons", "tor", "fre"]
 weekdays_en = ["mon", "tue", "wed", "thu", "fri"]
 
+http_errors = {
+    400: "Bad Request",
+    401: "Unauthorized",
+    403: "Forbidden",
+    404: "Not Found",
+    500: "Internal Server Error",
+    # Custom error codes for this project
+    2001: "Invalid username or password",
+    2002: "Resource not found",
+}
+
 
 def week_mon2sun(year, week):
     r = [
@@ -42,18 +51,22 @@ def is_week_in_next_year(year, week_num):
     return week_num > max_weeks
 
 
-@app.route("/")
-def root():
+def calculate_closest_week():
     today = datetime.date.today()
     now = datetime.datetime.now()
 
-    # If it's Saturday, Sunday, or Friday afternoon (12:00 PM onwards)
     if today.isoweekday() >= 6 or (today.isoweekday() == 5 and now.hour >= 12):
         today += datetime.timedelta(days=8 - today.isoweekday())
 
     week = today.isocalendar()[1]
     year = today.year  # Get the current year
-    return redirect(url_for("main.week", year=year, week=week))
+    return week, year
+
+
+@app.route("/")
+async def root():
+    curweek, year = calculate_closest_week()
+    return await week(curweek)
 
 
 async def hasperms(token, perms):
@@ -78,7 +91,7 @@ def dynamic_css():
 async def week(week):
     baseurl = request.url_root + url_for("main.root")[1:]
     year = request.args.get("year", type=int, default=datetime.datetime.now().year)
-    curweek = datetime.datetime.now().isocalendar()[1]
+    curweek, curyear = calculate_closest_week()
     token = request.cookies.get("token")
     if is_week_in_next_year(year, week):
         return redirect(url_for("main.week", week=1, year=year + 1))
@@ -95,7 +108,7 @@ async def week(week):
     links = [
         f"login - Logga in",
         f"register - Registrera nytt konto",
-        f"week/{curweek} - Matsedel för vecka {curweek}",
+        f"week/{curweek}?year={curyear} - Matsedel för vecka {curweek}",
         f"year/{year} - Matsedel för år {year}",
     ]
     i = await db.id_by_token(str(token))
@@ -119,7 +132,14 @@ async def week(week):
     if await hasperms(token, 1):
         links.append(f"mgr/food/import - Importera matsedel från JSON")
 
-    comlen = [len(await db.getcomments(year, week, i)) for i in range(5)]
+    comlen = [
+        (
+            "9+"
+            if len(await db.getcomments(year, week, i)) >= 10
+            else len(await db.getcomments(year, week, i))
+        )
+        for i in range(5)
+    ]
     foodplan = []
     for weekday in range(5):
         foodplan.append(
@@ -154,13 +174,13 @@ async def week(week):
 @app.route("/year/<int:year>")
 async def yearplan(year):
     baseurl = request.url_root + url_for("main.root")[1:]
-    curweek = datetime.datetime.now().isocalendar()[1]
+    curweek, curyear = calculate_closest_week()
     token = request.cookies.get("token")
 
     links = [
         "login - Logga in",
         "register - Registrera nytt konto",
-        f"week/{curweek} - Matsedel för vecka {curweek}",
+        f"week/{curweek}?year={curyear} - Matsedel för vecka {curweek}",
         f"year/{year} - Matsedel för år {year}",
     ]
 
@@ -207,8 +227,17 @@ async def yearplan(year):
     )
 
 
-def errorpage(code: int, message: str):
-    return render_template("error.html", code=code, message=message), int(code)
+def olderrorpage(code: int, message: str):
+    return render_template(
+        "error.html", code=code, message=http_errors.get(code, message)
+    ), int(code)
+
+
+def errorpage(code: int):
+    code = int(code)
+    return render_template(
+        "error.html", code=code, message=http_errors.get(code, "Unknown Error Code.")
+    )
 
 
 def correct_loginname(username: str):
@@ -229,7 +258,7 @@ async def login():
             )
             return resp
         except Exception as e:
-            return errorpage(403, "Forbidden: Invalid Credentials")
+            return olderrorpage(403, "Forbidden: Invalid Credentials")
     return render_template("login.html")
 
 
@@ -260,7 +289,7 @@ async def register():
             )  # log in after registering
             return resp
         except Exception as e:
-            return errorpage(403, "Forbidden: Invalid Credentials")
+            return olderrorpage(403, "Forbidden: Invalid Credentials")
     return render_template("register.html")
 
 
@@ -268,10 +297,10 @@ async def register():
 async def revoke_token(id):
     token = request.cookies.get("token", None)
     if token is None:
-        return errorpage(401, "Ej Inloggad")
+        return olderrorpage(401, "Ej Inloggad")
     mid = await db.id_by_token(token)  # my id
     if mid is None:
-        return errorpage(403, "Invalid inloggning")
+        return olderrorpage(403, "Invalid inloggning")
     if await hasperms(token, 2) or mid == id:
         await db.tokenrevoke(token)
     return redirect(url_for("main.root"))
@@ -280,10 +309,10 @@ async def revoke_token(id):
 @app.route("/mgr/accdel/<int:id>")
 async def delete_account(id):
     if id == 0:
-        return errorpage(403, "Admin is protected!")
+        return olderrorpage(403, "Admin is protected!")
     token = request.cookies.get("token", None)
     if token is None:
-        return errorpage(403, "Unauthorized")
+        return olderrorpage(403, "Unauthorized")
     info = await db.id_by_token(token)
     if await hasperms(token, 2) or info == id:
         await db.delete_account(id)
@@ -297,7 +326,7 @@ async def edit_display_name(id):
         try:
             token = request.cookies.get("token", None)
             if token is None:
-                raise errorpage(401, "Unauthorized")
+                raise olderrorpage(401, "Unauthorized")
             info = await db.user_by_token(token)
             if await hasperms(token, 2) or info["id"] == id:
                 await db.changedisplay(id, request.form.get("display"))
@@ -313,7 +342,7 @@ async def edit_login(id):
     try:
         token = request.cookies.get("token", None)
         if token is None:
-            raise Exception("Unauthorized")
+            olderrorpage(401, "Unauthorized")
         info = await db.user_by_token(token)
         if await hasperms(token, 2) or info["id"] == id:
             await db.editlogin(id, request.form.get("display"))
@@ -327,21 +356,21 @@ async def edit_login(id):
 async def edit_permission(id: int, permlevel: int):
     token = request.cookies.get("token", None)
     if token is None:
-        return errorpage(401, "Not logged in")
+        return olderrorpage(401, "Not logged in")
     mid = await db.id_by_token(token)
     if mid is None:
-        return errorpage(401, "Invalid Token")
+        return olderrorpage(401, "Invalid Token")
     info = await db.user_by_id(mid)
     permission = info["auth"]
     if permission >= int(db.AuthLevels.Moderator.value):
         if permlevel >= permission:
-            return errorpage(
+            return olderrorpage(
                 403,
                 "Can't assign higher or equal permission level.",
             )
         await db.edit_permission(id, permlevel)
         return redirect(url_for("main.root"))
-    return errorpage(403, "Invalid Permissions")
+    return olderrorpage(403, "Invalid Permissions")
 
 
 @app.route("/mgr/edtpwd/<int:id>", methods=["GET", "POST"])
@@ -353,7 +382,7 @@ async def edit_password(id):
             )
             return redirect(url_for("main.root"))
         except Exception as e:
-            return errorpage(400, str(e))
+            return olderrorpage(400, str(e))
     return render_template("changepassword.html")
 
 
@@ -371,7 +400,9 @@ async def editfoodforday(year, week, weekday):
                 )
             }
     return render_template(
-        "editfood.html", day=datetime.date.fromisocalendar(year, week, weekday)
+        "editfood.html",
+        day=datetime.date.fromisocalendar(year, week, weekday),
+        food=await db.get_food(year, week, weekday - 1),
     )
 
 
@@ -395,11 +426,11 @@ async def importfoodjson():
         try:
             token = request.cookies.get("token")
             if not token:
-                return {"error": "Invalid Permissions"}, 403
+                return olderrorpage(403, "Invalid permissions")
 
             file = request.files.get("json")
             if not file:
-                return {"error": "No file uploaded"}, 400
+                return olderrorpage(400, "No file uploaded")
 
             j = json.load(file.stream)
             for year, weeks in j.items():
@@ -453,13 +484,13 @@ async def addcomment(year, week, weekday):
     if request.method == "POST":
         token = request.cookies.get("token")
         if not token:
-            return errorpage(401, "Not logged in")
+            return olderrorpage(401, "Not logged in")
         info = await db.user_by_token(token)
         if info is None:
-            return errorpage(403, "Unauthorized")
+            return olderrorpage(403, "Unauthorized")
         value = str(request.form.get("value", "")).strip()
         if not value:
-            return errorpage(400, "No comment")
+            return olderrorpage(400, "No comment")
         await db.addcomment(year, week, weekday, value, info["id"])
         return redirect(url_for("main.comments", year=year, week=week, weekday=weekday))
 
@@ -469,7 +500,7 @@ async def delcomment(id):
     token = request.cookies.get("token")
     info = await db.user_by_token(token)
     if not token:
-        return errorpage(401, "Unauthorized")
+        return olderrorpage(401, "Unauthorized")
     user = (await db.get_author_by_comment_id(id)).split(":")[0]
     comment = await db.comment_by_id(id)
     if comment["comment"] == "<Deleted>":

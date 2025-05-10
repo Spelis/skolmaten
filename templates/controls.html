@@ -1,4 +1,24 @@
 {% macro dashboard(links, baseurl, userdict,loginid) %}
+    <script>
+  let deferredPrompt;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+  });
+
+  function installPWA() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt(); // Show the install prompt
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+        }
+        deferredPrompt = null; // Reset the prompt
+      });
+    }
+  }
+    </script>
     <div class="contbox">
         <div style="position: sticky;
                     top: 0;
@@ -12,6 +32,9 @@
                 <a href="{{ baseurl+i.split("-")[0] .strip() }}">{{ i.split("-")[1] .strip() }} </a>
             </p>
         {% endfor %}
+        <p>
+            <a href="javascript:void(0)" id="installButton" onclick="installPWA()">Installera på hemskärmen </a>
+        </p>
     </div>
     <div class="contbox">
         <div style="position: sticky;
