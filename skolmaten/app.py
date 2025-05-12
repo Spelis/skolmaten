@@ -229,7 +229,7 @@ async def yearplan(year):
 
 def olderrorpage(code: int, message: str):
     return render_template(
-        "error.html", code=code, message=http_errors.get(code, message)
+        "error.html", code=code, message=http_errors.get(code, "") + " " + message 
     ), int(code)
 
 
@@ -289,7 +289,7 @@ async def register():
             )  # log in after registering
             return resp
         except Exception as e:
-            return olderrorpage(403, "Forbidden: Invalid Credentials")
+            return olderrorpage(403, "Forbidden: Invalid Credentials " + str(e))
     return render_template("register.html")
 
 

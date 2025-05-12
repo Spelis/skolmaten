@@ -36,7 +36,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 async def get_next_user_id():
     async with aiosqlite.connect("database.db") as db:
-        async with db.execute("SELECT MAX(id) FROM users") as cursor:
+        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
             row = await cursor.fetchone()
             return row[0] or 0
 
@@ -127,7 +127,8 @@ async def register(username: str, passwd: str, authlvl):
 
         if exists:
             raise Exception("User already exists")
-
+        
+        ca = await get_next_user_id()
         await db.execute(
             "INSERT INTO users (token, name, pass, authlvl, display, id) VALUES (?, ?, ?, ?, ?, ?)",
             (
@@ -136,7 +137,7 @@ async def register(username: str, passwd: str, authlvl):
                 hash_password(passwd),
                 authlvl,
                 username,
-                await get_next_user_id(),
+                ca,
             ),
         )
         await db.commit()

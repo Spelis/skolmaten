@@ -9,4 +9,4 @@ PyPDF2
 gunicorn
 # for passwords
 passlib
-bcrypt
+bcrypt==4.0.1
