@@ -297,3 +297,22 @@ hr {
 		display: inline;
 	}
 }
+
+summary {
+	list-style: none;
+	cursor: pointer;
+	position: relative;
+	padding-left: 20px;
+}
+
+summary::before {
+	content: "";
+	cursor: pointer;
+	position:absolute;
+	left:5px;
+	transition: transform .3s ease;
+}
+
+details[open] summary::before {
+	transform: rotate(90deg);
+}
