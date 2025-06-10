@@ -21,7 +21,7 @@ En minimal asynkron webbapp för hantering av veckovisa matmenyer (skolmaten) me
 ```bash
 git clone https://github.com/spelis/skolmaten.git
 # eller git@github.com:spelis/skolmaten.git
-cd matsedel
+cd skolmaten
 ```
 
 ### 2. Installera beroendepaket
