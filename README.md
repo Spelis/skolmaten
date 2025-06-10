@@ -24,7 +24,7 @@ A minimal async web app for managing weekly food menus (skolmaten) with user aut
 ```bash
 git clone https://github.com/spelis/skolmaten.git
 # or git@github.com:spelis/skolmaten.git
-cd matsedel
+cd skolmaten
 ```
 
 ### 2. Install Dependencies
